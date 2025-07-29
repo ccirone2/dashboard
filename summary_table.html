@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Bokeh Plot</title>
+    <style>
+      html, body {
+        box-sizing: border-box;
+        display: flow-root;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-3.7.3.min.js"></script>
+    <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.7.3.min.js"></script>
+    <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-tables-3.7.3.min.js"></script>
+    <script type="text/javascript">
+        Bokeh.set_log_level("info");
+    </script>
+  </head>
+  <body>
+    <div id="cbaa3c73-4cf2-4a10-aebf-09bcb2fd7e5c" data-root-id="p1418" style="display: contents;"></div>
+  
+    <script type="application/json" id="cdefaea4-baa0-4aa7-ae93-b7227c8403b0">
+      {"bdda7964-0b10-4882-9577-a0f866e4f1e6":{"version":"3.7.3","title":"Bokeh Application","roots":[{"type":"object","name":"DataTable","id":"p1418","attributes":{"width":1200,"height":630,"sizing_mode":"stretch_width","source":{"type":"object","name":"ColumnDataSource","id":"p1390","attributes":{"selected":{"type":"object","name":"Selection","id":"p1391","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1392"},"data":{"type":"map","entries":[["index",{"type":"ndarray","array":{"type":"bytes","data":"AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAABAAAAARAAAAEgAAABMAAAAUAAAAFQAAABYAAAAXAAAA"},"shape":[24],"dtype":"int32","order":"little"}],["Bank ID",{"type":"ndarray","array":["bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1","bank_1"],"shape":[24],"dtype":"object","order":"little"}],["Cell ID",{"type":"ndarray","array":{"type":"bytes","data":"AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAAgAAAAJAAAACgAAAAsAAAAMAAAADQAAAA4AAAAPAAAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAAFgAAABcAAAAYAAAA"},"shape":[24],"dtype":"int32","order":"little"}],["Data Points",{"type":"ndarray","array":{"type":"bytes","data":"sAIAALACAACwAgAAsAIAAM4CAADmAgAA5gIAALACAACwAgAAsAIAAF8DAABfAwAAXwMAAF8DAADFAwAAeQMAAL0DAADhAwAAvAIAAP4CAABfAwAAXwMAAF8DAABfAwAA"},"shape":[24],"dtype":"int32","order":"little"}],["Median Voltage (V)",{"type":"ndarray","array":{"type":"bytes","data":"I9v5fmq8AUA9CtejcD0CQBKDwMqhRQJA+n5qvHSTAUBqvHSTGAQCQEoMAiuHFgJAF9nO91PjAUBiEFg5tMgBQCuHFtnO9wFA/tR46SYxAkDpJjEIrBwCQIXrUbgehQJASOF6FK5HAkAIrBxaZDsCQClcj8L1KAJAy6FFtvP9AUAIrBxaZDsCQLx0kxgEVgJA3SQGgZVDAkBzaJHtfD8CQMHKoUW28wFASOF6FK5HAkCHFtnO91MCQEjhehSuRwJA"},"shape":[24],"dtype":"float64","order":"little"}],["Min Voltage (V)",{"type":"ndarray","array":{"type":"bytes","data":"ObTIdr6f/j9zaJHtfD//P8l2vp8aL/8/LbKd76fG+z/hehSuR+H+P+F6FK5H4f4/SOF6FK5H/z+yne+nxkv/P7x0kxgEVv4/CtejcD0K/z9g5dAi2/n+P3WTGARWDv8/cT0K16Nw/z9eukkMAiv/PwaBlUOLbP8/SOF6FK5H/z/y0k1iEFj/P/Cnxks3if8/sp3vp8ZL/z9cj8L1KFz/P8uhRbbz/f4/yXa+nxov/z+wcmiR7Xz/P9v5fmq8dP8/"},"shape":[24],"dtype":"float64","order":"little"}],["Max Voltage (V)",{"type":"ndarray","array":{"type":"bytes","data":"ke18PzVeAkCuR+F6FK4DQMdLN4lBYANAL90kBoGVA0AOLbKd76cDQGiR7Xw/NQRA+FPjpZvEA0DFILByaJEDQBKDwMqhRQNA/Knx0k1iA0B7FK5H4XoDQB+F61G4HgRAZDvfT42XA0DufD81XroDQEa28/3UeANA7FG4HoXrA0BYObTIdr4DQC2yne+nxgNA+FPjpZvEA0C4HoXrUbgDQNnO91PjpQNAI9v5fmq8A0AOLbKd76cDQHNoke18PwNA"},"shape":[24],"dtype":"float64","order":"little"}],["Median Internal Resistance (\u03a9)",{"type":"ndarray","array":{"type":"bytes","data":"uB6F61G44j+R7Xw/NV7aP/LSTWIQWOE/7FG4HoXr2T9kO99PjZfiP3npJjEIrOQ/BoGVQ4ts3z+q8dJNYhDgP/yp8dJNYuA/EFg5tMh24j9g5dAi2/niP76fGi/dJOY/uB6F61G44j/HSzeJQWDhP8dLN4lBYOE/YOXQItv53j9xPQrXo3DhPxfZzvdT4+E/w/UoXI/C4T/4U+Olm8TgP2q8dJMYBOI/g8DKoUW24z9/arx0kxjgP23n+6nx0uE/"},"shape":[24],"dtype":"float64","order":"little"}],["Median Connection Resistance (\u03a9)",{"type":"ndarray","array":{"type":"bytes","data":"exSuR+F6xD97FK5H4XrEP6RwPQrXo8A/RIts5/upwT++nxov3STGPycxCKwcWsQ/okW28/3U5D/TTWIQWDnEPwAAAAAAAMA/7FG4HoXrwT9QjZduEoPAP/T91HjpJsE/okW28/3U2D9I4XoUrkfBPzvfT42XbsI/PzVeukkMwj9xPQrXo3C9PxKDwMqhRcY/zczMzMzM3D9QjZduEoPAP+Olm8QgsMI/j8L1KFyPwj+cxCCwcmjBP2iR7Xw/Nb4/"},"shape":[24],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1422","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1423"}}},"columns":[{"type":"object","name":"TableColumn","id":"p1394","attributes":{"field":"Bank ID","title":"Bank ID","width":150,"formatter":{"type":"object","name":"StringFormatter","id":"p1395"},"editor":{"type":"object","name":"StringEditor","id":"p1396"}}},{"type":"object","name":"TableColumn","id":"p1397","attributes":{"field":"Cell ID","title":"Cell ID","width":150,"formatter":{"type":"object","name":"StringFormatter","id":"p1398"},"editor":{"type":"object","name":"StringEditor","id":"p1399"}}},{"type":"object","name":"TableColumn","id":"p1400","attributes":{"field":"Data Points","title":"Data Points","width":150,"formatter":{"type":"object","name":"StringFormatter","id":"p1401"},"editor":{"type":"object","name":"StringEditor","id":"p1402"}}},{"type":"object","name":"TableColumn","id":"p1403","attributes":{"field":"Median Voltage (V)","title":"Median Voltage (V)","width":150,"formatter":{"type":"object","name":"NumberFormatter","id":"p1393","attributes":{"format":"0.000"}},"editor":{"type":"object","name":"StringEditor","id":"p1405"}}},{"type":"object","name":"TableColumn","id":"p1406","attributes":{"field":"Min Voltage (V)","title":"Min Voltage (V)","width":150,"formatter":{"id":"p1393"},"editor":{"type":"object","name":"StringEditor","id":"p1408"}}},{"type":"object","name":"TableColumn","id":"p1409","attributes":{"field":"Max Voltage (V)","title":"Max Voltage (V)","width":150,"formatter":{"id":"p1393"},"editor":{"type":"object","name":"StringEditor","id":"p1411"}}},{"type":"object","name":"TableColumn","id":"p1412","attributes":{"field":"Median Internal Resistance (\u03a9)","title":"Median Internal Resistance (\u03a9)","width":150,"formatter":{"id":"p1393"},"editor":{"type":"object","name":"StringEditor","id":"p1414"}}},{"type":"object","name":"TableColumn","id":"p1415","attributes":{"field":"Median Connection Resistance (\u03a9)","title":"Median Connection Resistance (\u03a9)","width":150,"formatter":{"id":"p1393"},"editor":{"type":"object","name":"StringEditor","id":"p1417"}}}]}}]}}
+    </script>
+    <script type="text/javascript">
+      (function() {
+        const fn = function() {
+          Bokeh.safely(function() {
+            (function(root) {
+              function embed_document(root) {
+              const docs_json = document.getElementById('cdefaea4-baa0-4aa7-ae93-b7227c8403b0').textContent;
+              const render_items = [{"docid":"bdda7964-0b10-4882-9577-a0f866e4f1e6","roots":{"p1418":"cbaa3c73-4cf2-4a10-aebf-09bcb2fd7e5c"},"root_ids":["p1418"]}];
+              root.Bokeh.embed.embed_items(docs_json, render_items);
+              }
+              if (root.Bokeh !== undefined) {
+                embed_document(root);
+              } else {
+                let attempts = 0;
+                const timer = setInterval(function(root) {
+                  if (root.Bokeh !== undefined) {
+                    clearInterval(timer);
+                    embed_document(root);
+                  } else {
+                    attempts++;
+                    if (attempts > 100) {
+                      clearInterval(timer);
+                      console.log("Bokeh: ERROR: Unable to run BokehJS code because BokehJS library is missing");
+                    }
+                  }
+                }, 10, root)
+              }
+            })(window);
+          });
+        };
+        if (document.readyState != "loading") fn();
+        else document.addEventListener("DOMContentLoaded", fn);
+      })();
+    </script>
+  </body>
+</html>
