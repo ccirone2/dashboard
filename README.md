@@ -34,6 +34,17 @@ Browsers may cache files for up to 10 minutes; hard-refresh to see a change imme
    select drives the production totals (`/api/production`). The view is kept in the URL
    (`?hours=`, `?start=&end=`, `?year=`).
 
+## Zooming and panning
+
+Drag across any time chart (cell voltages, string charts, average power) to zoom the **x axis**;
+all time charts follow. Move the window with the chart toolbar's x-move tool or the header's
+◀ ▶ buttons, and reset with the toolbar's reset (power chart: double-click or autoscale). After
+you stop, the page re-fetches the visible window from the API, so detail increases as the window
+narrows (for example 30-minute averages for a month, raw 5-minute samples within 72 hours). The
+zoomed window is kept in the URL (`from`/`to`) and shown as a "Zoomed" chip with "Reset zoom".
+Y axes never zoom. The daily/monthly/annual production charts aren't part of this; they follow
+the Period selector.
+
 ## API contract
 
 `EXPECTED_API_VERSION` in `js/app.js` must match `API_VERSION` in the backend's `server.py`.

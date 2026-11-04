@@ -23,6 +23,11 @@ on Cloud Run. Its CLAUDE.md and DEPLOYMENT.md cover the server side. The API add
   Keys map to element ids in `loadRange()` / `loadProduction()`.
 - The API only accepts browser requests from origins in its `ALLOWED_ORIGINS`
   (`https://ccirone2.github.io`). A new hosting origin needs a backend env change.
+- **Synchronised zoom/pan**: the backend names its Bokeh figures `cell_voltage_plot`,
+  `string_vi_plot` and `string_temp_plot` (`BOKEH_TIMESERIES` here), gives them x-only tools,
+  and fires DOM events `ts-xrange` `{source, start, end}` / `ts-reset` on range change and reset.
+  The Plotly `avg-power-chart` reports through `plotly_relayout` (`PLOTLY_TIMESERIES`). Renaming
+  a figure on either side breaks the sync for that chart.
 
 ## Gotchas
 
@@ -41,6 +46,22 @@ on Cloud Run. Its CLAUDE.md and DEPLOYMENT.md cover the server side. The API add
   ResizeObserver.
 - The app is hidden until `phase === 'ready'` (`x-cloak`). Charts render after `$nextTick` so
   their containers have a size.
+- **Zoom/pan sync** (`onChartRange` → `queueSync` → `scheduleViewFetch` → `loadRange({zoom:true})`):
+  - All times are "wall ms": Chicago wall-clock time as if UTC, which is what Bokeh datetime
+    axes hold and how Plotly's naive strings read. Use `wallMsFromText` / `isoMinuteFromWallMs` /
+    `plotlyFromWallMs`; never `new Date(localString)`.
+  - Our own `setv` / `Plotly.relayout` echo back as range events. They're ignored by comparing
+    against `currentWindow()` within a small tolerance, so set `this.view` *before* syncing.
+  - Responses are dropped if `viewVersion` changed meanwhile (the user zoomed again).
+    `requestWindow()` clamps to what the API accepts (≥10 min, ≤732 days, ≤ now + 23 h), and the
+    exact view is re-applied after rendering.
+  - Bokeh's reset tool also snaps the range back, which emits range events. `clearView()` ignores
+    range events for 400 ms.
+  - Bokeh re-renders are double-buffered (`.bokeh-holder`): the new figure is drawn over the old
+    one before the old one is removed.
+  - The view lives in the URL as `from`/`to`; presets and custom ranges clear it.
+- Tailwind's preflight `svg { display: block }` stacks Plotly's modebar icons; `css/dashboard.css`
+  restores `inline-block` for `.modebar svg`.
 - `?api=<url>` overrides `js/config.js` for the tab (sessionStorage); `?api=default` clears it.
   Don't persist the override in localStorage on this public origin.
 
