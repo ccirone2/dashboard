@@ -1,0 +1,217 @@
+/* Minimal custom styles for scroll snapping and chart sizing */
+html {
+    scroll-snap-type: y mandatory;  /* Stronger snap behavior */
+}
+
+.chart-snap {
+    scroll-snap-align: start;
+    scroll-margin-top: 55px;  /* Offset snap position below sticky section header */
+}
+
+@media (max-width: 767px) {
+    .chart-snap {
+        scroll-margin-top: 103px;  /* Additional offset for mobile header (48px) */
+    }
+}
+
+/*
+ * Chart Container Layout Strategy:
+ * Use flexbox with flex-direction: column to create an unbroken height chain.
+ * The container gets explicit height from Tailwind vh units.
+ * The header (h3) takes its natural height, wrapper fills remaining space.
+ *
+ * Key insight: CSS `height: 100%` requires parent to have explicit CSS height.
+ * Flex-computed heights don't count. Solution: use position:absolute inside
+ * position:relative flex item - this makes the absolute child fill the
+ * flex-computed space while giving Plotly an explicit reference frame.
+ */
+.chart-container {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Chart wrapper fills remaining space in flex container */
+.chart-wrapper {
+    flex: 1 1 0%;           /* Grow, shrink, start from 0 */
+    min-height: 0;          /* Critical: allows flex item to shrink below content size */
+    width: 100%;
+    overflow: hidden;
+    contain: layout paint;  /* Prevent layout thrashing */
+    position: relative;     /* Establish positioning context for absolute children */
+}
+
+/* Inner chart element - absolute positioning to fill flex-computed space */
+.chart-wrapper > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Table wrapper - override flex behavior to expand naturally */
+.chart-wrapper.table-wrapper {
+    flex: 0 0 auto;         /* Don't grow or shrink, use natural size */
+    min-height: auto;
+    overflow: visible;
+    height: auto;
+    position: static;       /* Remove relative positioning for table */
+}
+
+.chart-wrapper.table-wrapper > * {
+    position: static;       /* Remove absolute positioning for table content */
+    width: auto;
+    height: auto;
+}
+
+/* Plotly charts - fill their container completely */
+.js-plotly-plot {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.js-plotly-plot .plotly-graph-div {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Bokeh charts - fill their container completely */
+/* Note: position is handled by .chart-wrapper > * rule above */
+.bk-root {
+    width: 100% !important;
+    height: 100% !important;
+}
+.bk-root .bk-canvas-text {
+    pointer-events: none;
+    z-index: 1000;
+}
+.bk-root .bk-text {
+    z-index: 1001 !important;
+    pointer-events: none;
+    font-weight: 500;
+}
+.bk-root .bk-glyph-renderer {
+    z-index: 100;
+}
+/* Ensure label background is visible */
+.bk-root .bk-canvas {
+    z-index: 50;
+}
+
+/* Navigation Rail Items */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+    position: relative;
+}
+
+.nav-item:hover {
+    background-color: rgba(15, 23, 42, 0.5);
+    color: #cbd5e1;
+}
+
+/* Icon Container - Fixed Width */
+.nav-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+/* Label - Hidden/Visible */
+.nav-label {
+    white-space: nowrap;
+    overflow: hidden;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Active State */
+.nav-item-active {
+    background-color: rgba(51, 65, 85, 0.6);
+    color: #e2e8f0;
+    border-left-color: #64748b;
+}
+
+.nav-item-active:hover {
+    background-color: rgba(51, 65, 85, 0.8);
+}
+
+/* Desktop Collapsed State */
+@media (min-width: 768px) {
+    nav:not(:hover) .nav-label {
+        opacity: 0;
+        width: 0;
+        margin: 0;
+    }
+}
+
+/* Main content margin expands with nav */
+@media (min-width: 768px) {
+    nav:hover ~ main {
+        margin-left: 224px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-snap-type: none;
+        scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+[x-cloak] { display: none !important; }
+
+/* The header holds the range controls; with mandatory snapping it must be a snap
+   point too, or the page can never come to rest scrolled to the top. */
+.page-header-snap {
+    scroll-snap-align: start;
+    scroll-margin-top: 24px;
+}
+@media (max-width: 767px) {
+    .page-header-snap { scroll-margin-top: 72px; }
+}
+
+/* Loading veil over a chart while its data is being fetched */
+.chart-wrapper > .chart-loading {
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+}
+.chart-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    text-align: center;
+    padding: 1rem;
+}
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #cbd5e1;
+    border-top-color: #334155;
+    border-radius: 9999px;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
