@@ -24,7 +24,8 @@ on Cloud Run. Its CLAUDE.md and DEPLOYMENT.md cover the server side. The API add
 - The API only accepts browser requests from origins in its `ALLOWED_ORIGINS`
   (`https://ccirone2.github.io`). A new hosting origin needs a backend env change.
 - **Synchronised zoom/pan**: the backend names its Bokeh figures `cell_voltage_plot`,
-  `string_vi_plot` and `string_temp_plot` (`BOKEH_TIMESERIES` here), gives them x-only tools,
+  `string_vi_plot` and `string_temp_plot` (`BOKEH_TIMESERIES` here), gives them x-only tools
+  (pan as the default drag, x box zoom, no wheel zoom; hover/crosshair start off),
   and fires DOM events `ts-xrange` `{source, start, end}` / `ts-reset` on range change and reset.
   The Plotly `avg-power-chart` reports through `plotly_relayout` (`PLOTLY_TIMESERIES`). Renaming
   a figure on either side breaks the sync for that chart.
