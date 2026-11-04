@@ -36,14 +36,16 @@ Browsers may cache files for up to 10 minutes; hard-refresh to see a change imme
 
 ## Zooming and panning
 
-Drag across any time chart (cell voltages, string charts, average power) to zoom the **x axis**;
-all time charts follow. Move the window with the chart toolbar's x-move tool or the header's
-◀ ▶ buttons, and reset with the toolbar's reset (power chart: double-click or autoscale). After
-you stop, the page re-fetches the visible window from the API, so detail increases as the window
-narrows (for example 30-minute averages for a month, raw 5-minute samples within 72 hours). The
-zoomed window is kept in the URL (`from`/`to`) and shown as a "Zoomed" chip with "Reset zoom".
-Y axes never zoom. The daily/monthly/annual production charts aren't part of this; they follow
-the Period selector.
+On the Bokeh time charts (cell voltages, string charts), dragging **pans** through time; zoom with
+the toolbar's x box-zoom tool. On the average-power chart, dragging box-zooms. All time charts
+follow the same window, ◀ ▶ step it, and the toolbar's reset (power chart: double-click or
+autoscale) returns to the header's range. There's no wheel zoom, so the wheel scrolls the page.
+Hover readouts and crosshairs are in each Bokeh toolbar, off by default. After you stop, the page
+re-fetches the visible window from the API, so detail increases as the window narrows (for
+example 30-minute averages for a month, raw 5-minute samples within 72 hours). The zoomed window
+is kept in the URL (`from`/`to`) and shown as a "Zoomed" chip with "Reset zoom". Y axes never
+zoom. The daily/monthly/annual production charts aren't part of this; they follow the Period
+selector.
 
 ## API contract
 
