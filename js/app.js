@@ -104,6 +104,7 @@ function clearPlotly(el) {
         // purge() leaves the class behind; without removing it, the next plot is drawn
         // next to whatever placeholder showMessage() put in the element.
         el.classList.remove('js-plotly-plot');
+        el._tsSyncBound = false;   // purge() also removed our plotly_relayout listener
     }
 }
 
@@ -124,20 +125,74 @@ async function renderSpec(targetId, spec) {
     const el = document.getElementById(targetId);
     if (!el || !spec) return;
     if (spec.type === 'bokeh') {
-        clearBokeh(targetId);
+        // Draw the new figure on top of the old one, then remove the old one: re-fetching
+        // after every zoom/pan would otherwise flash an empty chart.
         clearPlotly(el);
-        el.innerHTML = '';
+        const oldDocs = bokehDocsByTarget[targetId] || [];
+        const oldNodes = [...el.children];
+        const holder = document.createElement('div');
+        holder.className = el.closest('.table-wrapper') ? 'bokeh-holder-static' : 'bokeh-holder';
+        el.appendChild(holder);
         const before = new Set(Bokeh.documents);
-        await Bokeh.embed.embed_item(spec.item, el);
+        try {
+            await Bokeh.embed.embed_item(spec.item, holder);
+        } catch (error) {
+            holder.remove();
+            throw error;
+        }
         bokehDocsByTarget[targetId] = Bokeh.documents.filter(doc => !before.has(doc));
+        for (const doc of oldDocs) {
+            try { doc.clear(); } catch (e) { console.debug('Bokeh clear error', e); }
+            const index = Bokeh.documents.indexOf(doc);
+            if (index >= 0) Bokeh.documents.splice(index, 1);
+        }
+        oldNodes.forEach(node => node.remove());
     } else if (spec.type === 'plotly') {
         clearBokeh(targetId);
         if (!el.classList.contains('js-plotly-plot')) el.innerHTML = '';
         el.querySelectorAll(':scope > .chart-message').forEach(node => node.remove());
         await Plotly.react(el, spec.figure.data, spec.figure.layout || {}, spec.config || {});
+        if (renderSpec.onPlotly) renderSpec.onPlotly(targetId, el);
     } else {
         showMessage(targetId, spec.text || 'No data available.');
     }
+}
+
+// ------------------------------------------------------------------
+// Synchronised x zoom/pan for the time-series charts.
+// Times are "wall ms": Chicago wall-clock time encoded as if it were UTC. That is what
+// Bokeh's datetime axis holds (the API strips time zones) and how Plotly's naive date
+// strings read, so the charts can exchange ranges without any time-zone maths.
+// ------------------------------------------------------------------
+const MIN_VIEW_MS = 10 * 60 * 1000;          // API minimum range
+const MAX_VIEW_MS = 732 * 86400 * 1000;      // API maximum range
+const MAX_FUTURE_MS = 23 * 3600 * 1000;      // API allows end up to 1 day ahead
+const VIEW_FETCH_DELAY_MS = 450;             // fetch after the zoom/pan settles
+
+// Chart element id -> names of the Bokeh figures (in chart_sync) whose x range to drive.
+// The two string figures share one x range, so driving one moves both.
+const BOKEH_TIMESERIES = {
+    'cell-voltage-chart': ['cell_voltage_plot'],
+    'string-chart': ['string_vi_plot'],
+};
+const PLOTLY_TIMESERIES = { 'avg-power-chart': 'avg_power' };
+
+function wallMsFromText(text) {
+    // "2026-11-04T08:00", "2026-11-04 08:00:00.1234" -> wall ms (NaN if unparseable)
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?)?/.exec(String(text));
+    if (!m) return NaN;
+    const ms = m[7] ? Math.round(parseFloat(m[7]) * 1000) : 0;
+    return Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0), ms);
+}
+function isoMinuteFromWallMs(ms) { return new Date(ms).toISOString().slice(0, 16); }
+function plotlyFromWallMs(ms) { return new Date(ms).toISOString().slice(0, 23).replace('T', ' '); }
+function nowWallMs() {
+    const parts = {};
+    new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Chicago', hourCycle: 'h23', year: 'numeric', month: '2-digit',
+        day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(new Date()).forEach(p => { parts[p.type] = p.value; });
+    return Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
 }
 
 function formatLocal(isoText) {
@@ -174,6 +229,15 @@ function dashboard() {
         customEnd: '',
         showCustom: false,
         shown: null,            // range echoed by the server {start, end, hours}
+        // Zoomed/panned window (wall ms) shared by every time-series chart; null = the
+        // header's range. Set by the charts' own x zoom/pan tools and the ◀ ▶ buttons.
+        view: null,
+        viewVersion: 0,
+        viewTimer: null,
+        syncFrame: null,
+        pendingSync: null,
+        ignoreRangeEventsUntil: 0,
+        refreshKind: 'full',    // 'zoom' while re-fetching for a zoom/pan (subtle spinner)
         resolution: '',
         rangeError: '',
 
@@ -189,6 +253,10 @@ function dashboard() {
         autoRefreshMinutes: 5,
 
         get rangeLabel() {
+            if (this.view) {
+                return formatLocal(isoMinuteFromWallMs(this.view.start)) + ' – '
+                    + formatLocal(isoMinuteFromWallMs(this.view.end));
+            }
             if (this.hours) {
                 const match = this.presets.find(p => p[0] === this.hours);
                 return match ? 'Last ' + match[1] : 'Last ' + this.hours + 'h';
@@ -207,11 +275,12 @@ function dashboard() {
             this.readUrl();
             this.setupSectionObserver();
             this.setupResizeHandling();
+            this.setupTimeseriesSync();
             this.start();
 
             // Keep relative ranges fresh while the tab is visible.
             setInterval(() => {
-                if (this.phase === 'ready' && this.hours
+                if (this.phase === 'ready' && this.hours && !this.view
                     && document.visibilityState === 'visible' && !this.anyLoading) {
                     this.loadRange();
                 }
@@ -304,6 +373,8 @@ function dashboard() {
                 if (h > 0) this.hours = h;
             }
             if (params.get('year')) this.year = params.get('year');
+            const from = wallMsFromText(params.get('from') || ''), to = wallMsFromText(params.get('to') || '');
+            if (Number.isFinite(from) && Number.isFinite(to) && to > from) this.view = { start: from, end: to };
         },
         writeUrl() {
             const params = new URLSearchParams();
@@ -313,13 +384,21 @@ function dashboard() {
                 params.set('start', this.customStart);
                 if (this.customEnd) params.set('end', this.customEnd);
             }
+            if (this.view) {
+                params.set('from', isoMinuteFromWallMs(this.view.start));
+                params.set('to', isoMinuteFromWallMs(this.view.end));
+            }
             if (this.year) params.set('year', this.year);
             const query = params.toString();
             history.replaceState(null, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
         },
         rangeQuery() {
             const params = new URLSearchParams();
-            if (this.hours) {
+            if (this.view) {
+                const win = this.requestWindow(this.view);
+                params.set('start', isoMinuteFromWallMs(win.start));
+                params.set('end', isoMinuteFromWallMs(win.end));
+            } else if (this.hours) {
                 params.set('hours', this.hours);
             } else {
                 params.set('start', this.customStart);
@@ -330,6 +409,7 @@ function dashboard() {
 
         // ----------------------------------------------------------- actions
         selectPreset(hours) {
+            this.clearView();
             this.hours = hours;
             this.showCustom = false;
             this.rangeError = '';
@@ -353,6 +433,7 @@ function dashboard() {
                 return;
             }
             this.rangeError = '';
+            this.clearView();
             this.hours = null;
             this.writeUrl();
             this.loadRange();
@@ -410,17 +491,17 @@ function dashboard() {
             }
         },
 
-        async loadGroup(key, url, targets, seqName, seq) {
+        async loadGroup(key, url, targets, seqName, seq, isCurrent = () => true) {
             this.loading[key] = true;
             try {
                 const payload = await this.fetchJson(url);
-                if (seq !== this.requestSeq[seqName]) return null;   // superseded
+                if (seq !== this.requestSeq[seqName] || !isCurrent()) return null;   // superseded
                 for (const [chartKey, targetId] of Object.entries(targets)) {
                     await renderSpec(targetId, payload.charts[chartKey]);
                 }
                 return payload;
             } catch (e) {
-                if (seq !== this.requestSeq[seqName]) return null;
+                if (seq !== this.requestSeq[seqName] || !isCurrent()) return null;
                 for (const targetId of Object.values(targets)) showMessage(targetId, e.message);
                 if (seqName === 'range') this.rangeError = e.message;
                 return null;
@@ -429,24 +510,160 @@ function dashboard() {
             }
         },
 
-        async loadRange() {
+        async loadRange({ zoom = false } = {}) {
+            clearTimeout(this.viewTimer);
             const seq = ++this.requestSeq.range;
+            const version = this.viewVersion;
+            const isCurrent = () => version === this.viewVersion;   // user zoomed again: drop it
             const query = this.rangeQuery();
+            this.refreshKind = zoom ? 'zoom' : 'full';
             this.rangeError = '';
             const results = await Promise.all([
-                this.loadGroup('power', '/api/power?' + query, { avg_power: 'avg-power-chart' }, 'range', seq),
-                this.loadGroup('strings', '/api/strings?' + query, { string_plot: 'string-chart' }, 'range', seq),
+                this.loadGroup('power', '/api/power?' + query, { avg_power: 'avg-power-chart' }, 'range', seq, isCurrent),
+                this.loadGroup('strings', '/api/strings?' + query, { string_plot: 'string-chart' }, 'range', seq, isCurrent),
                 this.loadGroup('cells', '/api/cells?' + query,
-                    { cell_voltage: 'cell-voltage-chart', cell_summary: 'cell-summary-table' }, 'range', seq),
+                    { cell_voltage: 'cell-voltage-chart', cell_summary: 'cell-summary-table' }, 'range', seq, isCurrent),
             ]);
-            if (seq !== this.requestSeq.range) return;
+            if (seq !== this.requestSeq.range || !isCurrent()) return;
             const first = results.find(Boolean);
             if (first) {
                 this.shown = first.range;
                 const cells = results[2];
                 this.resolution = cells ? cells.resolution : first.resolution;
             }
+            // The API may have widened the request (minimum 10 min, no far future); put the
+            // charts back on exactly the window the user chose.
+            if (this.view) this.applyWindowToCharts(this.view, null);
             this.updatedAt = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        },
+
+        // ----------------------------------------------------------- synchronised zoom/pan
+        setupTimeseriesSync() {
+            document.addEventListener('ts-xrange', event => {
+                const { source, start, end } = event.detail || {};
+                this.onChartRange(source, start, end);
+            });
+            document.addEventListener('ts-reset', () => this.resetView());
+            renderSpec.onPlotly = (targetId, el) => {
+                const source = PLOTLY_TIMESERIES[targetId];
+                if (!source || el._tsSyncBound) return;
+                el._tsSyncBound = true;
+                el.on('plotly_relayout', update => {
+                    // Autoscale button / double-click: back to the header's range.
+                    if (update['xaxis.autorange'] === true) {
+                        this.resetView();
+                        return;
+                    }
+                    const range = update['xaxis.range'] || [update['xaxis.range[0]'], update['xaxis.range[1]']];
+                    if (range[0] === undefined || range[1] === undefined) return;
+                    this.onChartRange(source, wallMsFromText(range[0]), wallMsFromText(range[1]));
+                });
+            };
+        },
+
+        currentWindow() {
+            if (this.view) return this.view;
+            if (!this.shown) return null;
+            return { start: wallMsFromText(this.shown.start), end: wallMsFromText(this.shown.end) };
+        },
+
+        // A chart's x range changed (user zoom/pan, or the echo of our own sync).
+        onChartRange(source, start, end) {
+            if (this.phase !== 'ready' || Date.now() < this.ignoreRangeEventsUntil) return;
+            if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+            const current = this.currentWindow();
+            const tolerance = Math.max(1000, (end - start) * 0.002);
+            if (current && Math.abs(start - current.start) < tolerance
+                && Math.abs(end - current.end) < tolerance) return;   // our own echo
+            this.view = { start, end };
+            this.viewVersion++;
+            this.queueSync(this.view, source);
+            this.scheduleViewFetch();
+        },
+
+        // Move the other charts to the new window, at most once per animation frame.
+        queueSync(win, source) {
+            this.pendingSync = { win, source };
+            if (this.syncFrame) return;
+            this.syncFrame = requestAnimationFrame(() => {
+                this.syncFrame = null;
+                const { win: target, source: from } = this.pendingSync;
+                this.applyWindowToCharts(target, from);
+            });
+        },
+
+        applyWindowToCharts(win, exceptSource) {
+            for (const [targetId, names] of Object.entries(BOKEH_TIMESERIES)) {
+                for (const doc of bokehDocsByTarget[targetId] || []) {
+                    for (const name of names) {
+                        if (name === exceptSource) continue;
+                        const plot = doc.get_model_by_name(name);
+                        if (plot && plot.x_range) plot.x_range.setv({ start: win.start, end: win.end });
+                    }
+                }
+            }
+            for (const [targetId, name] of Object.entries(PLOTLY_TIMESERIES)) {
+                if (name === exceptSource) continue;
+                const el = document.getElementById(targetId);
+                if (el && el.classList.contains('js-plotly-plot')) {
+                    Plotly.relayout(el, { 'xaxis.range': [plotlyFromWallMs(win.start), plotlyFromWallMs(win.end)] });
+                }
+            }
+        },
+
+        scheduleViewFetch() {
+            clearTimeout(this.viewTimer);
+            this.viewTimer = setTimeout(() => {
+                this.writeUrl();
+                this.loadRange({ zoom: true });
+            }, VIEW_FETCH_DELAY_MS);
+        },
+
+        // Clamp the window to what the API accepts; the charts still show the exact view.
+        requestWindow(win) {
+            let { start, end } = win;
+            const latest = nowWallMs() + MAX_FUTURE_MS;
+            if (end > latest) end = latest;
+            if (end - start > MAX_VIEW_MS) start = end - MAX_VIEW_MS;
+            if (end - start < MIN_VIEW_MS) {
+                const middle = (start + end) / 2;
+                start = middle - MIN_VIEW_MS / 2;
+                end = Math.min(middle + MIN_VIEW_MS / 2, latest);
+                start = Math.min(start, end - MIN_VIEW_MS);
+            }
+            return { start, end };
+        },
+
+        // ◀ ▶: move the window by half its width, keeping the width.
+        shiftView(direction) {
+            const current = this.currentWindow();
+            if (!current) return;
+            const delta = (current.end - current.start) / 2 * direction;
+            this.view = { start: current.start + delta, end: current.end + delta };
+            this.viewVersion++;
+            this.applyWindowToCharts(this.view, null);
+            this.scheduleViewFetch();
+        },
+
+        clearView() {
+            clearTimeout(this.viewTimer);
+            this.view = null;
+            this.viewVersion++;
+            // Bokeh's reset tool also snaps ranges back; don't mistake that for a new zoom.
+            this.ignoreRangeEventsUntil = Date.now() + 400;
+        },
+
+        resetView() {
+            if (!this.view) {
+                // Already on the header range: just put any chart that moved back on it.
+                const current = this.currentWindow();
+                if (current) this.applyWindowToCharts(current, null);
+                this.ignoreRangeEventsUntil = Date.now() + 400;
+                return;
+            }
+            this.clearView();
+            this.writeUrl();
+            this.loadRange();
         },
 
         async loadProduction() {

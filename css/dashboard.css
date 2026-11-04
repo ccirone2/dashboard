@@ -215,3 +215,32 @@ html {
     animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Double-buffered Bokeh rendering (js/app.js renderSpec): each figure lives in a holder that
+   fills the chart element, so a new figure can be drawn on top before the old one is removed. */
+.bokeh-holder {
+    position: absolute;
+    inset: 0;
+}
+.bokeh-holder-static {
+    position: static;
+}
+
+/* While re-fetching after a zoom/pan, show a small spinner without dimming the chart. */
+.chart-wrapper > .chart-loading.chart-loading-subtle {
+    background: transparent;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 6px 40px 0 0;
+}
+.chart-loading-subtle .spinner {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+/* Tailwind's preflight sets `svg { display: block }`, which stacks Plotly's modebar icons
+   into a column over the axis labels. Restore Plotly's inline icons. */
+.js-plotly-plot .modebar svg {
+    display: inline-block;
+}
