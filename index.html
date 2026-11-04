@@ -1,27 +1,337 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Renewable Power Dashboard has moved</title>
-  <meta name="robots" content="noindex">
-  <link rel="canonical" href="https://power-dashboard-770273654276.us-central1.run.app/">
-  <meta http-equiv="refresh" content="0; url=https://power-dashboard-770273654276.us-central1.run.app/">
-  <script>window.location.replace("https://power-dashboard-770273654276.us-central1.run.app/");</script>
-  <style>
-    :root { color-scheme: light dark; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
-           font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-           background: #f8fafc; color: #0f172a; }
-    @media (prefers-color-scheme: dark) { body { background: #0f172a; color: #e2e8f0; } a { color: #93c5fd; } }
-    main { max-width: 32rem; text-align: center; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renewable Power Dashboard</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>">
+
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+
+    <!-- Plotly.js. BokehJS is loaded by js/app.js at the version the API reports. -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+    <!-- Alpine.js (loaded after dashboard() is defined) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
 </head>
-<body>
-  <main>
-    <h1>☀️ The dashboard has moved</h1>
-    <p>Redirecting to the live dashboard…</p>
-    <p><a href="https://power-dashboard-770273654276.us-central1.run.app/">Continue to the dashboard</a></p>
-  </main>
+
+<body
+    x-data="dashboard()"
+    @keydown.escape.window="mobileMenuOpen = false"
+    class="bg-slate-50 text-slate-900 min-h-screen"
+    :class="{ 'overflow-hidden': mobileMenuOpen }"
+>
+
+    <!-- Startup / error / login screens (everything else stays hidden until phase is 'ready') -->
+    <div x-show="phase !== 'ready'" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-100 px-4">
+        <div class="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="text-center">
+                <div class="text-4xl" aria-hidden="true">☀️</div>
+                <h1 class="mt-2 text-xl font-bold text-slate-800">Renewable Power Dashboard</h1>
+            </div>
+
+            <div x-show="phase === 'starting'" class="mt-6 flex flex-col items-center gap-3 text-slate-500" role="status">
+                <div class="spinner"></div>
+                <span class="text-sm">Connecting…</span>
+            </div>
+
+            <div x-show="phase === 'error'" x-cloak class="mt-6 text-center" role="alert">
+                <p class="text-sm text-red-700" x-text="startupError"></p>
+                <button type="button" @click="start()"
+                    class="mt-4 px-4 py-2 rounded-md bg-slate-800 text-white text-sm font-medium hover:bg-slate-700">Try again</button>
+            </div>
+
+            <form x-show="phase === 'login'" x-cloak @submit.prevent="login()" class="mt-6 space-y-4">
+                <label class="block text-sm text-slate-700">
+                    <span class="font-medium">Username</span>
+                    <input type="text" x-model="loginUser" autocomplete="username" required
+                        class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
+                </label>
+                <label class="block text-sm text-slate-700">
+                    <span class="font-medium">Password</span>
+                    <input type="password" x-model="loginPass" autocomplete="current-password" required
+                        class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
+                </label>
+                <p x-show="loginError" x-text="loginError" class="text-sm text-red-700" role="alert"></p>
+                <button type="submit" :disabled="loggingIn"
+                    class="w-full px-4 py-2 rounded-md bg-slate-800 text-white font-medium hover:bg-slate-700 disabled:opacity-60">
+                    <span x-text="loggingIn ? 'Signing in…' : 'Sign in'">Sign in</span>
+                </button>
+            </form>
+
+            <p x-show="apiOverridden" x-cloak class="mt-4 text-center text-xs text-amber-700">
+                Using API <span x-text="apiBase"></span> (<a class="underline" href="?api=default">reset</a>)
+            </p>
+        </div>
+    </div>
+
+
+    <!-- Mobile Header (visible < 1024px portrait) -->
+    <header x-show="phase === 'ready'" x-cloak class="hidden max-lg:portrait:flex fixed top-0 left-0 right-0 h-12 bg-slate-900 items-center px-3 z-50 shadow-lg">
+        <button
+            @click="mobileMenuOpen = !mobileMenuOpen"
+            class="w-11 h-11 flex items-center justify-center text-white text-2xl rounded-lg hover:bg-slate-800 transition-colors"
+            :aria-expanded="mobileMenuOpen"
+            aria-label="Toggle navigation"
+        >
+            <span x-show="!mobileMenuOpen">&#9776;</span>
+            <span x-show="mobileMenuOpen" x-cloak>&times;</span>
+        </button>
+        <span class="ml-3 text-white font-semibold">Power Dashboard</span>
+    </header>
+
+    <!-- Mobile Overlay (visible < 1024px portrait) -->
+    <div
+        x-show="mobileMenuOpen"
+        x-transition:enter="transition-opacity duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition-opacity duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click="mobileMenuOpen = false"
+        class="hidden max-lg:portrait:block fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+        x-cloak
+    ></div>
+
+    <!-- Sidebar Navigation Rail -->
+    <nav
+        x-show="phase === 'ready'" x-cloak
+        class="fixed left-0 top-0 bottom-0 bg-slate-900 z-50 flex flex-col py-4
+               transition-all duration-300 ease-out
+               w-56 md:w-16 md:hover:w-56
+               max-lg:portrait:-translate-x-full max-lg:portrait:w-72 max-lg:portrait:pt-16 max-lg:portrait:shadow-2xl
+               max-lg:landscape:w-16 lg:landscape:w-16"
+        :class="{ 'max-lg:portrait:translate-x-0': mobileMenuOpen }"
+        aria-label="Main navigation"
+    >
+        <div class="flex items-center justify-center h-12 mb-8 px-4">
+            <span class="text-3xl" aria-hidden="true">☀️</span>
+        </div>
+        <div class="flex-1 flex flex-col gap-2 px-2">
+            <a href="#production" @click="mobileMenuOpen = false" class="nav-item"
+               :class="activeSection === 'production' ? 'nav-item-active' : ''" title="Production">
+                <span class="nav-icon">⚡</span>
+                <span class="nav-label">Production</span>
+            </a>
+            <a href="#storage" @click="mobileMenuOpen = false" class="nav-item"
+               :class="activeSection === 'storage' ? 'nav-item-active' : ''" title="Storage">
+                <span class="nav-icon">🔋</span>
+                <span class="nav-label">Storage</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main x-show="phase === 'ready'" x-cloak class="md:ml-16 max-lg:portrait:ml-0 max-lg:landscape:ml-16 lg:landscape:ml-16 min-h-screen pt-14 md:pt-0 max-lg:portrait:pt-14 px-4 md:px-6 pb-24 transition-all duration-300 ease-out">
+
+        <!-- Page Header + time range controls -->
+        <header class="page-header-snap bg-white/80 backdrop-blur-md rounded-xl border border-slate-200 shadow-sm p-6 my-6">
+            <div class="text-center">
+                <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-700 to-slate-500 bg-clip-text text-transparent">
+                    Renewable Power System Dashboard
+                </h1>
+                <p class="text-slate-500 mt-2 text-sm">
+                    <span x-text="rangeLabel">Last 72h</span>
+                    <template x-if="shown && hours">
+                        <span>(<span x-text="formatLocal(shown.start)"></span> – <span x-text="formatLocal(shown.end)"></span>)</span>
+                    </template>
+                    <template x-if="resolution">
+                        <span>· <span x-text="resolution === 'raw' ? 'full resolution' : resolution + ' averages'"></span></span>
+                    </template>
+                    <template x-if="updatedAt">
+                        <span>· updated <span x-text="updatedAt"></span></span>
+                    </template>
+                </p>
+            </div>
+
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <div class="inline-flex flex-wrap rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm font-medium" role="group" aria-label="Time range">
+                    <template x-for="[presetHours, presetLabel] in presets" :key="presetHours">
+                        <button type="button" @click="selectPreset(presetHours)"
+                            class="px-3 py-1.5 rounded-md transition-colors"
+                            :class="hours === presetHours ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'"
+                            :aria-pressed="hours === presetHours" x-text="presetLabel"></button>
+                    </template>
+                    <button type="button" @click="openCustom()"
+                        class="px-3 py-1.5 rounded-md transition-colors"
+                        :class="!hours ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'"
+                        :aria-pressed="!hours" :aria-expanded="showCustom">Custom…</button>
+                </div>
+                <button type="button" @click="refresh()" :disabled="anyLoading"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                    title="Reload all charts">
+                    <span :class="anyLoading ? 'animate-spin' : ''" class="inline-block">&#8635;</span> Refresh
+                </button>
+                <button type="button" x-show="authRequired" @click="logout()"
+                    class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-100"
+                    title="Sign out of this browser">Sign out</button>
+            </div>
+            <p x-show="versionWarning" x-cloak x-text="versionWarning" class="mt-3 text-center text-sm text-amber-700" role="status"></p>
+            <p x-show="apiOverridden" x-cloak class="mt-2 text-center text-xs text-amber-700">
+                Using API <span x-text="apiBase"></span> (<a class="underline" href="?api=default">reset</a>)
+            </p>
+
+            <form x-show="showCustom" x-cloak @submit.prevent="applyCustom()"
+                class="mt-3 flex flex-wrap items-end justify-center gap-3 text-sm">
+                <label class="flex flex-col text-slate-600">
+                    <span class="text-xs font-medium mb-1">Start (Central time)</span>
+                    <input type="datetime-local" x-model="customStart" :min="earliest.cells || ''" required
+                        class="rounded-md border border-slate-300 px-2 py-1">
+                </label>
+                <label class="flex flex-col text-slate-600">
+                    <span class="text-xs font-medium mb-1">End (blank = now)</span>
+                    <input type="datetime-local" x-model="customEnd" :min="customStart"
+                        class="rounded-md border border-slate-300 px-2 py-1">
+                </label>
+                <button type="submit" class="px-4 py-1.5 rounded-md bg-slate-800 text-white font-medium hover:bg-slate-700">Apply</button>
+            </form>
+            <p x-show="rangeError" x-cloak x-text="rangeError" class="mt-2 text-center text-sm text-red-600" role="alert"></p>
+        </header>
+
+        <!-- Production Section -->
+        <section id="production" data-section="production" class="mb-12 scroll-mt-16">
+            <div class="sticky top-0 md:top-0 max-md:top-12 z-10 -mx-4 md:-mx-6 px-4 md:px-6">
+                <div class="flex items-center gap-4 py-4 px-6 bg-slate-100/85 backdrop-blur-xl border-b-2 border-slate-300 rounded-t-xl shadow-sm">
+                    <span class="text-2xl">&#9889;</span>
+                    <h2 class="text-xl font-bold text-slate-800">Energy Production</h2>
+                    <span class="hidden md:inline ml-auto text-slate-500 font-medium">Solar, wind, and generator output</span>
+                </div>
+            </div>
+
+            <div class="space-y-6 mt-6">
+                <!-- Average Power Chart (time range) -->
+                <div class="chart-container chart-snap w-full h-[75vh] max-lg:landscape:h-[90vh] min-h-[300px] bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
+                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 flex-shrink-0 max-lg:landscape:hidden">
+                        <span>&#128200;</span> <span>Average Power &amp; Voltage (<span x-text="rangeLabel"></span>)</span>
+                    </h3>
+                    <div class="chart-wrapper">
+                        <div id="avg-power-chart"></div>
+                        <div class="chart-loading" x-show="loading.power" x-cloak><div class="spinner"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Production period selector (daily / monthly / generator / annual charts) -->
+            <div class="mt-8 flex flex-wrap items-center gap-3">
+                <h3 class="text-lg font-semibold text-slate-700">Production totals</h3>
+                <label class="flex items-center gap-2 text-sm text-slate-600">
+                    <span>Period</span>
+                    <select x-model="year" @change="selectYear()"
+                        class="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm">
+                        <option value="">Recent (6+ months)</option>
+                        <template x-for="y in years" :key="y">
+                            <option :value="String(y)" x-text="y" :selected="String(y) === year"></option>
+                        </template>
+                    </select>
+                </label>
+                <span class="text-xs text-slate-400" x-show="periodShown" x-cloak>
+                    <span x-text="periodShown ? formatLocal(periodShown.start) : ''"></span> –
+                    <span x-text="periodShown ? formatLocal(periodShown.end) : ''"></span>
+                </span>
+            </div>
+
+            <div class="space-y-6 mt-4">
+                <!-- Daily Energy Chart (period) -->
+                <div class="chart-container chart-snap w-full h-[75vh] max-lg:landscape:h-[90vh] min-h-[300px] bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
+                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 flex-shrink-0 max-lg:landscape:hidden">
+                        <span>&#128202;</span> <span>Daily Energy Production (<span x-text="periodLabel"></span>)</span>
+                    </h3>
+                    <div class="chart-wrapper">
+                        <div id="daily-energy-chart"></div>
+                        <div class="chart-loading" x-show="loading.production" x-cloak><div class="spinner"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+                <div class="chart-container chart-snap w-full h-[75vh] max-lg:landscape:h-[90vh] min-h-[300px] bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
+                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 flex-shrink-0 max-lg:landscape:hidden">
+                        <span>&#128202;</span> Monthly Energy by Source
+                    </h3>
+                    <div class="chart-wrapper">
+                        <div id="monthly-energy-chart"></div>
+                        <div class="chart-loading" x-show="loading.production" x-cloak><div class="spinner"></div></div>
+                    </div>
+                </div>
+
+                <div class="chart-container chart-snap w-full h-[75vh] max-lg:landscape:h-[90vh] min-h-[300px] bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
+                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 flex-shrink-0 max-lg:landscape:hidden">
+                        <span>&#9881;&#65039;</span> Generator Runtime Hours
+                    </h3>
+                    <div class="chart-wrapper">
+                        <div id="generator-hours-chart"></div>
+                        <div class="chart-loading" x-show="loading.production" x-cloak><div class="spinner"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <div class="chart-container chart-snap w-full h-[75vh] max-lg:landscape:h-[90vh] min-h-[300px] bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
+                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 flex-shrink-0 max-lg:landscape:hidden">
+                        <span>&#128202;</span> Annual Production Overview
+                    </h3>
+                    <div class="chart-wrapper">
+                        <div id="annual-production-chart"></div>
+                        <div class="chart-loading" x-show="loading.production" x-cloak><div class="spinner"></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Storage Section -->
+        <section id="storage" data-section="storage" class="mb-12 scroll-mt-16">
+            <div class="sticky top-0 md:top-0 max-md:top-12 z-10 -mx-4 md:-mx-6 px-4 md:px-6">
+                <div class="flex items-center gap-4 py-4 px-6 bg-slate-100/85 backdrop-blur-xl border-b-2 border-slate-300 rounded-t-xl shadow-sm">
+                    <span class="text-2xl">&#128267;</span>
+                    <h2 class="text-xl font-bold text-slate-800">Energy Storage</h2>
+                    <span class="hidden md:inline ml-auto text-slate-500 font-medium">Battery bank monitoring</span>
+                </div>
+            </div>
+
+            <div class="space-y-6 mt-6">
+                <div class="chart-container chart-snap w-full h-[75vh] max-lg:landscape:h-[90vh] min-h-[300px] bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
+                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 flex-shrink-0 max-lg:landscape:hidden">
+                        <span>&#9201;&#65039;</span> <span>String Voltage &amp; Current (<span x-text="rangeLabel"></span>)</span>
+                    </h3>
+                    <div class="chart-wrapper">
+                        <div id="string-chart"></div>
+                        <div class="chart-loading" x-show="loading.strings" x-cloak><div class="spinner"></div></div>
+                    </div>
+                </div>
+
+                <div class="chart-container chart-snap w-full h-[75vh] max-lg:landscape:h-[90vh] min-h-[300px] bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
+                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 flex-shrink-0 max-lg:landscape:hidden">
+                        <span>&#9201;&#65039;</span> <span>Cell Voltages Over Time (<span x-text="rangeLabel"></span>)</span>
+                    </h3>
+                    <div class="chart-wrapper">
+                        <div id="cell-voltage-chart"></div>
+                        <div class="chart-loading" x-show="loading.cells" x-cloak><div class="spinner"></div></div>
+                    </div>
+                </div>
+
+                <div class="chart-snap w-full bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
+                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 max-lg:landscape:hidden">
+                        <span>&#128203;</span> <span>Cell Performance Summary (<span x-text="rangeLabel"></span>)</span>
+                    </h3>
+                    <div class="chart-wrapper table-wrapper transition-opacity" :class="loading.cells ? 'opacity-50' : ''">
+                        <div id="cell-summary-table"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center py-8 text-slate-400 border-t-2 border-slate-200 mt-12 bg-gradient-to-t from-slate-100/50 to-transparent">
+            <p class="flex items-center justify-center gap-2">
+                <span>&#9889;</span>
+                <span>Renewable Power System Dashboard</span>
+            </p>
+        </footer>
+    </main>
 </body>
 </html>
