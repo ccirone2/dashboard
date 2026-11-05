@@ -3,15 +3,62 @@ html {
     scroll-snap-type: y mandatory;  /* Stronger snap behavior */
 }
 
+/*
+ * Sticky stack at the top of the page, from the top down:
+ *   --topbar-h     the phone header (fixed, 48px; only in portrait below 1024px)
+ *   --timebar-h    the time bar (#time-bar), measured by js/app.js because it wraps
+ *                  and grows (custom range form, help text)
+ *   --sectionbar-h the "Energy Production" / "Energy Storage" bar, also measured
+ * Charts snap to just below the whole stack.
+ */
+:root {
+    --topbar-h: 0px;
+    --timebar-h: 76px;
+    --sectionbar-h: 50px;
+}
+@media (max-width: 1023.98px) and (orientation: portrait) {
+    :root { --topbar-h: 48px; }
+}
+.time-bar { top: var(--topbar-h); }
+.section-bar { top: calc(var(--topbar-h) + var(--timebar-h)); }
+.section-anchor { scroll-margin-top: calc(var(--topbar-h) + var(--timebar-h)); }
+
 .chart-snap {
     scroll-snap-align: start;
-    scroll-margin-top: 55px;  /* Offset snap position below sticky section header */
+    scroll-margin-top: calc(var(--topbar-h) + var(--timebar-h) + var(--sectionbar-h) + 8px);
 }
 
-@media (max-width: 767px) {
-    .chart-snap {
-        scroll-margin-top: 103px;  /* Additional offset for mobile header (48px) */
+/* A chart card must fit in the space under the sticky stack, or snapping lets the page rest
+   with the card's top hidden under the bars. The Tailwind h-[75vh] / h-[90vh] / min-h-[300px]
+   classes on the cards are the upper bounds; this (more specific) rule shrinks them to fit. */
+.chart-container.chart-snap {
+    --snap-room: calc(100vh - var(--topbar-h) - var(--timebar-h) - var(--sectionbar-h) - 16px);
+    height: min(75vh, var(--snap-room));
+    min-height: min(300px, var(--snap-room));
+}
+@supports (height: 100svh) {
+    .chart-container.chart-snap {
+        --snap-room: calc(100svh - var(--topbar-h) - var(--timebar-h) - var(--sectionbar-h) - 16px);
     }
+}
+@media (max-width: 1023.98px) and (orientation: landscape) {
+    .chart-container.chart-snap { height: min(90vh, var(--snap-room)); }
+}
+/* Short screens (phones in landscape): only the time bar stays pinned, so the charts keep
+   their height. js/app.js reports --sectionbar-h as 0 when the bar isn't sticky. */
+@media (max-height: 520px) {
+    .section-bar { position: static; }
+}
+
+/* Preset buttons scroll sideways on narrow screens instead of wrapping onto a second row. */
+.range-scroller {
+    scrollbar-width: none;
+}
+.range-scroller::-webkit-scrollbar { display: none; }
+/* Fade the right edge while more presets are hidden there (class set by js/app.js). */
+.range-scroller.more-right {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 }
 
 /*
@@ -179,14 +226,12 @@ html {
 
 [x-cloak] { display: none !important; }
 
-/* The header holds the range controls; with mandatory snapping it must be a snap
-   point too, or the page can never come to rest scrolled to the top. */
-.page-header-snap {
+/* With mandatory snapping the page needs a snap point at the very top, or it can never
+   come to rest there (the time bar itself is sticky, so it can't be that point). */
+.top-snap {
+    height: 0;
     scroll-snap-align: start;
-    scroll-margin-top: 24px;
-}
-@media (max-width: 767px) {
-    .page-header-snap { scroll-margin-top: 72px; }
+    scroll-margin-top: var(--topbar-h);
 }
 
 /* Loading veil over a chart while its data is being fetched */

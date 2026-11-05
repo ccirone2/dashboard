@@ -209,6 +209,7 @@ function dashboard() {
     return {
         mobileMenuOpen: false,
         activeSection: 'production',
+        showHelp: false,
 
         // App lifecycle: 'starting' -> ('login' <-> 'ready') | 'error'
         phase: 'starting',
@@ -275,6 +276,7 @@ function dashboard() {
             this.readUrl();
             this.setupSectionObserver();
             this.setupResizeHandling();
+            this.setupStickyOffsets();
             this.setupTimeseriesSync();
             this.start();
 
@@ -687,6 +689,33 @@ function dashboard() {
                 });
             }, { rootMargin: '-20% 0px -70% 0px' });
             sections.forEach(s => observer.observe(s));
+        },
+
+        // The time bar wraps and grows (custom range form, help, warnings), so publish its real
+        // height, and the section bar's, for the sticky offsets and snap margins in the CSS.
+        setupStickyOffsets() {
+            const root = document.documentElement.style;
+            const timeBar = document.getElementById('time-bar');
+            const sectionBar = document.querySelector('.section-bar');
+            const update = () => {
+                if (timeBar && timeBar.offsetHeight) root.setProperty('--timebar-h', timeBar.offsetHeight + 'px');
+                if (sectionBar && sectionBar.offsetHeight) {
+                    const sticky = getComputedStyle(sectionBar).position === 'sticky';
+                    root.setProperty('--sectionbar-h', (sticky ? sectionBar.offsetHeight : 0) + 'px');
+                }
+            };
+            const scroller = timeBar && timeBar.querySelector('.range-scroller');
+            const markOverflow = () => {
+                if (!scroller) return;
+                const hidden = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft;
+                scroller.classList.toggle('more-right', hidden > 2);
+            };
+            if (scroller) scroller.addEventListener('scroll', markOverflow, { passive: true });
+            const observer = new ResizeObserver(() => { update(); markOverflow(); });
+            [timeBar, sectionBar, scroller].forEach(el => el && observer.observe(el));
+            // Rotating can make the section bar sticky or static without resizing it.
+            window.addEventListener('resize', update, { passive: true });
+            update();
         },
 
         setupResizeHandling() {

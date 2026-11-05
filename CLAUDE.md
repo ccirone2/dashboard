@@ -40,8 +40,17 @@ on Cloud Run. Its CLAUDE.md and DEPLOYMENT.md cover the server side. The API add
   `Plotly.purge()`, and `clearBokeh()` must drop the old Bokeh documents. Otherwise placeholders
   linger next to new plots and `Bokeh.documents` grows.
 - **Scroll snapping** (`scroll-snap-type: y mandatory` in `css/dashboard.css`): every region the
-  user must reach, including the header with the range controls, needs `scroll-snap-align`, or
-  the page can't rest there.
+  user must reach needs `scroll-snap-align`, or the page can't rest there (the top of the page
+  has the empty `.top-snap` anchor, since the sticky time bar can't be a snap point). Controls
+  between two snapped cards end up under the sticky bars and can't be reached on phones. That's
+  why the Period select lives in the Daily Energy card's header.
+- **Sticky stack**: phone header (`--topbar-h`, 48px in portrait below 1024px) → `#time-bar`
+  (`--timebar-h`) → `.section-bar` (`--sectionbar-h`, 0 on screens ≤520px tall, where it isn't
+  sticky). `setupStickyOffsets()` measures the last two with a ResizeObserver, because the time
+  bar grows (custom form, help, warnings). Snap margins and the chart card height
+  (`.chart-container.chart-snap`: at most 75vh, shrunk to fit under the stack) use these
+  variables. A card taller than the room under the stack lets the page rest with its top
+  hidden.
 - **Chart sizing** comes from CSS: the `.chart-wrapper` flex chain plus absolutely positioned
   children. Bokeh figures use `stretch_both`, and Plotly uses `responsive: true` plus a
   ResizeObserver.

@@ -125,78 +125,95 @@
                 <span class="nav-label">Storage</span>
             </a>
         </div>
+        <div class="px-2" x-show="authRequired">
+            <button type="button" @click="mobileMenuOpen = false; logout()" class="nav-item w-full text-left" title="Sign out of this browser">
+                <span class="nav-icon" aria-hidden="true">&#8617;</span>
+                <span class="nav-label">Sign out</span>
+            </button>
+        </div>
     </nav>
 
     <!-- Main Content -->
-    <main x-show="phase === 'ready'" x-cloak class="md:ml-16 max-lg:portrait:ml-0 max-lg:landscape:ml-16 lg:landscape:ml-16 min-h-screen pt-14 md:pt-0 max-lg:portrait:pt-14 px-4 md:px-6 pb-24 transition-all duration-300 ease-out">
+    <main x-show="phase === 'ready'" x-cloak class="md:ml-16 max-lg:portrait:ml-0 max-lg:landscape:ml-16 lg:landscape:ml-16 min-h-screen max-lg:portrait:pt-12 px-4 md:px-6 pb-24 transition-all duration-300 ease-out">
 
-        <!-- Page Header + time range controls -->
-        <header class="page-header-snap bg-white/80 backdrop-blur-md rounded-xl border border-slate-200 shadow-sm p-6 my-6">
-            <div class="text-center">
-                <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-700 to-slate-500 bg-clip-text text-transparent">
-                    Renewable Power System Dashboard
-                </h1>
-                <p class="text-slate-500 mt-2 text-sm">
-                    <span x-text="rangeLabel">Last 72h</span>
-                    <template x-if="shown && hours && !view">
-                        <span>(<span x-text="formatLocal(shown.start)"></span> – <span x-text="formatLocal(shown.end)"></span>)</span>
-                    </template>
-                    <template x-if="resolution">
-                        <span>· <span x-text="resolution === 'raw' ? 'full resolution' : resolution + ' averages'"></span></span>
-                    </template>
-                    <template x-if="updatedAt">
-                        <span>· updated <span x-text="updatedAt"></span></span>
-                    </template>
-                </p>
-            </div>
+        <!-- Rest point for the top of the page (mandatory scroll snapping needs one) -->
+        <div class="top-snap" aria-hidden="true"></div>
 
-            <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
-                <div class="inline-flex flex-wrap rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm font-medium" role="group" aria-label="Time range">
-                    <template x-for="[presetHours, presetLabel] in presets" :key="presetHours">
-                        <button type="button" @click="selectPreset(presetHours)"
-                            class="px-3 py-1.5 rounded-md transition-colors"
-                            :class="hours === presetHours && !view ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'"
-                            :aria-pressed="hours === presetHours && !view" x-text="presetLabel"></button>
-                    </template>
-                    <button type="button" @click="openCustom()"
-                        class="px-3 py-1.5 rounded-md transition-colors"
-                        :class="!hours && !view ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'"
-                        :aria-pressed="!hours && !view" :aria-expanded="showCustom">Custom…</button>
+        <!-- Time bar: stays on screen while scrolling, so the range, zoom and refresh
+             controls are always one tap away. js/app.js measures its height (--timebar-h). -->
+        <div id="time-bar" class="time-bar sticky z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm"
+             @click.outside="showHelp = false">
+            <div class="flex items-center gap-2">
+                <h1 class="sr-only lg:not-sr-only lg:mr-2 text-base font-bold text-slate-700 whitespace-nowrap">Renewable Power Dashboard</h1>
+                <div class="range-scroller flex-1 min-w-0 overflow-x-auto">
+                    <div class="inline-flex whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm font-medium" role="group" aria-label="Time range">
+                        <template x-for="[presetHours, presetLabel] in presets" :key="presetHours">
+                            <button type="button" @click="selectPreset(presetHours)"
+                                class="px-2.5 sm:px-3 py-1.5 rounded-md transition-colors"
+                                :class="hours === presetHours && !view ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'"
+                                :aria-pressed="hours === presetHours && !view" x-text="presetLabel"></button>
+                        </template>
+                        <button type="button" @click="openCustom()"
+                            class="px-2.5 sm:px-3 py-1.5 rounded-md transition-colors"
+                            :class="!hours && !view ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'"
+                            :aria-pressed="!hours && !view" :aria-expanded="showCustom">Custom…</button>
+                    </div>
                 </div>
-                <div class="inline-flex rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600" role="group" aria-label="Move the time window">
-                    <button type="button" @click="shiftView(-1)" class="px-3 py-1.5 rounded-l-lg hover:bg-slate-100"
+                <div class="shrink-0 inline-flex rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600" role="group" aria-label="Move the time window">
+                    <button type="button" @click="shiftView(-1)" class="px-2.5 sm:px-3 py-1.5 rounded-l-lg hover:bg-slate-100"
                         title="Earlier: move the window back by half its width" aria-label="Earlier">&#9664;</button>
-                    <button type="button" @click="shiftView(1)" class="px-3 py-1.5 rounded-r-lg border-l border-slate-200 hover:bg-slate-100"
+                    <button type="button" @click="shiftView(1)" class="px-2.5 sm:px-3 py-1.5 rounded-r-lg border-l border-slate-200 hover:bg-slate-100"
                         title="Later: move the window forward by half its width" aria-label="Later">&#9654;</button>
                 </div>
                 <button type="button" @click="refresh()" :disabled="anyLoading"
-                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-                    title="Reload all charts">
-                    <span :class="anyLoading ? 'animate-spin' : ''" class="inline-block">&#8635;</span> Refresh
+                    class="shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                    title="Reload all charts" aria-label="Refresh">
+                    <span :class="anyLoading ? 'animate-spin' : ''" class="inline-block" aria-hidden="true">&#8635;</span><span class="hidden sm:inline">Refresh</span>
                 </button>
-                <button type="button" x-show="authRequired" @click="logout()"
-                    class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-100"
-                    title="Sign out of this browser">Sign out</button>
             </div>
-            <div x-show="view" x-cloak class="mt-3 flex flex-wrap items-center justify-center gap-2 text-sm" role="status">
-                <span class="rounded-full bg-sky-50 border border-sky-200 px-3 py-1 text-sky-800">
-                    Zoomed: <span x-text="rangeLabel"></span>
-                </span>
-                <button type="button" @click="resetView()"
-                    class="px-3 py-1 rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100">Reset zoom</button>
+
+            <div class="mt-1.5 flex items-center gap-2 min-h-[1.75rem] text-xs text-slate-500" role="status">
+                <template x-if="!view">
+                    <span class="min-w-0 truncate">
+                        <span class="font-medium text-slate-600" x-text="rangeLabel">Last 72h</span>
+                        <template x-if="shown && hours">
+                            <span class="hidden sm:inline">(<span x-text="formatLocal(shown.start)"></span> – <span x-text="formatLocal(shown.end)"></span>)</span>
+                        </template>
+                        <template x-if="resolution">
+                            <span>· <span x-text="resolution === 'raw' ? 'full resolution' : resolution + ' averages'"></span></span>
+                        </template>
+                        <template x-if="updatedAt">
+                            <span>· updated <span x-text="updatedAt"></span></span>
+                        </template>
+                    </span>
+                </template>
+                <template x-if="view">
+                    <span class="min-w-0 flex items-center gap-2">
+                        <span class="min-w-0 truncate rounded-full bg-sky-50 border border-sky-200 px-2.5 py-0.5 text-sky-800">
+                            Zoomed: <span x-text="rangeLabel"></span>
+                        </span>
+                        <button type="button" @click="resetView()"
+                            class="shrink-0 px-2.5 py-0.5 rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100">Reset zoom</button>
+                    </span>
+                </template>
+                <button type="button" @click="showHelp = !showHelp" :aria-expanded="showHelp" aria-controls="time-help"
+                    class="ml-auto shrink-0 w-7 h-7 rounded-full border border-slate-300 bg-white text-slate-600 font-semibold hover:bg-slate-100"
+                    :class="showHelp ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-700' : ''"
+                    title="How to zoom and pan" aria-label="How to zoom and pan">?</button>
             </div>
-            <p class="mt-2 text-center text-xs text-slate-400">
+
+            <p id="time-help" x-show="showHelp" x-cloak class="mt-2 text-xs text-slate-600">
                 Drag a time chart to move through time; every time chart follows. Zoom with the toolbar's
                 box-zoom tool (power chart: drag), with more detail as the window narrows. ◀ ▶ step the window.
                 Reset with the toolbar's reset (power chart: double-click). Hover readouts are in each toolbar.
             </p>
-            <p x-show="versionWarning" x-cloak x-text="versionWarning" class="mt-3 text-center text-sm text-amber-700" role="status"></p>
-            <p x-show="apiOverridden" x-cloak class="mt-2 text-center text-xs text-amber-700">
+            <p x-show="versionWarning" x-cloak x-text="versionWarning" class="mt-2 text-xs text-amber-700" role="status"></p>
+            <p x-show="apiOverridden" x-cloak class="mt-1 text-xs text-amber-700">
                 Using API <span x-text="apiBase"></span> (<a class="underline" href="?api=default">reset</a>)
             </p>
 
             <form x-show="showCustom" x-cloak @submit.prevent="applyCustom()"
-                class="mt-3 flex flex-wrap items-end justify-center gap-3 text-sm">
+                class="mt-2 pb-1 flex flex-wrap items-end gap-3 text-sm">
                 <label class="flex flex-col text-slate-600">
                     <span class="text-xs font-medium mb-1">Start (Central time)</span>
                     <input type="datetime-local" x-model="customStart" :min="earliest.cells || ''" required
@@ -209,16 +226,16 @@
                 </label>
                 <button type="submit" class="px-4 py-1.5 rounded-md bg-slate-800 text-white font-medium hover:bg-slate-700">Apply</button>
             </form>
-            <p x-show="rangeError" x-cloak x-text="rangeError" class="mt-2 text-center text-sm text-red-600" role="alert"></p>
-        </header>
+            <p x-show="rangeError" x-cloak x-text="rangeError" class="mt-1 text-xs text-red-600" role="alert"></p>
+        </div>
 
         <!-- Production Section -->
-        <section id="production" data-section="production" class="mb-12 scroll-mt-16">
-            <div class="sticky top-0 md:top-0 max-md:top-12 z-10 -mx-4 md:-mx-6 px-4 md:px-6">
-                <div class="flex items-center gap-4 py-4 px-6 bg-slate-100/85 backdrop-blur-xl border-b-2 border-slate-300 rounded-t-xl shadow-sm">
-                    <span class="text-2xl">&#9889;</span>
-                    <h2 class="text-xl font-bold text-slate-800">Energy Production</h2>
-                    <span class="hidden md:inline ml-auto text-slate-500 font-medium">Solar, wind, and generator output</span>
+        <section id="production" data-section="production" class="section-anchor mt-6 mb-12">
+            <div class="section-bar sticky z-10 -mx-4 md:-mx-6 px-4 md:px-6">
+                <div class="flex items-center gap-3 py-2.5 px-4 md:px-6 bg-slate-100/85 backdrop-blur-xl border-b-2 border-slate-300 rounded-t-xl shadow-sm">
+                    <span class="text-xl" aria-hidden="true">&#9889;</span>
+                    <h2 class="text-lg font-bold text-slate-800">Energy Production</h2>
+                    <span class="hidden md:inline ml-auto text-sm text-slate-500 font-medium">Solar, wind, and generator output</span>
                 </div>
             </div>
 
@@ -235,31 +252,29 @@
                 </div>
             </div>
 
-            <!-- Production period selector (daily / monthly / generator / annual charts) -->
-            <div class="mt-8 flex flex-wrap items-center gap-3">
-                <h3 class="text-lg font-semibold text-slate-700">Production totals</h3>
-                <label class="flex items-center gap-2 text-sm text-slate-600">
-                    <span>Period</span>
-                    <select x-model="year" @change="selectYear()"
-                        class="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm">
-                        <option value="">Recent (6+ months)</option>
-                        <template x-for="y in years" :key="y">
-                            <option :value="String(y)" x-text="y" :selected="String(y) === year"></option>
-                        </template>
-                    </select>
-                </label>
-                <span class="text-xs text-slate-400" x-show="periodShown" x-cloak>
-                    <span x-text="periodShown ? formatLocal(periodShown.start) : ''"></span> –
-                    <span x-text="periodShown ? formatLocal(periodShown.end) : ''"></span>
-                </span>
-            </div>
-
-            <div class="space-y-6 mt-4">
+            <div class="space-y-6 mt-6">
                 <!-- Daily Energy Chart (period) -->
                 <div class="chart-container chart-snap w-full h-[75vh] max-lg:landscape:h-[90vh] min-h-[300px] bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-400 transition-all duration-200 p-4">
-                    <h3 class="text-base font-semibold text-slate-700 pb-3 mb-3 border-b-2 border-slate-100 flex items-center gap-2 flex-shrink-0 max-lg:landscape:hidden">
-                        <span>&#128202;</span> <span>Daily Energy Production (<span x-text="periodLabel"></span>)</span>
-                    </h3>
+                    <div class="pb-2 mb-3 border-b-2 border-slate-100 flex flex-wrap items-center gap-x-3 gap-y-1 flex-shrink-0">
+                        <h3 class="text-base font-semibold text-slate-700 flex items-center gap-2">
+                            <span>&#128202;</span> <span>Daily Energy Production (<span x-text="periodLabel"></span>)</span>
+                        </h3>
+                        <label class="ml-auto flex items-center gap-2 text-sm text-slate-600"
+                            title="Period for the daily, monthly, generator and annual charts">
+                            <span>Period</span>
+                            <select x-model="year" @change="selectYear()"
+                                class="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm">
+                                <option value="">Recent (6+ months)</option>
+                                <template x-for="y in years" :key="y">
+                                    <option :value="String(y)" x-text="y" :selected="String(y) === year"></option>
+                                </template>
+                            </select>
+                        </label>
+                        <span class="w-full text-xs text-slate-400 max-lg:landscape:hidden" x-show="periodShown" x-cloak>
+                            Totals for <span x-text="periodShown ? formatLocal(periodShown.start) : ''"></span> –
+                            <span x-text="periodShown ? formatLocal(periodShown.end) : ''"></span>; this period also drives the charts below.
+                        </span>
+                    </div>
                     <div class="chart-wrapper">
                         <div id="daily-energy-chart"></div>
                         <div class="chart-loading" x-show="loading.production" x-cloak><div class="spinner"></div></div>
@@ -303,12 +318,12 @@
         </section>
 
         <!-- Storage Section -->
-        <section id="storage" data-section="storage" class="mb-12 scroll-mt-16">
-            <div class="sticky top-0 md:top-0 max-md:top-12 z-10 -mx-4 md:-mx-6 px-4 md:px-6">
-                <div class="flex items-center gap-4 py-4 px-6 bg-slate-100/85 backdrop-blur-xl border-b-2 border-slate-300 rounded-t-xl shadow-sm">
-                    <span class="text-2xl">&#128267;</span>
-                    <h2 class="text-xl font-bold text-slate-800">Energy Storage</h2>
-                    <span class="hidden md:inline ml-auto text-slate-500 font-medium">Battery bank monitoring</span>
+        <section id="storage" data-section="storage" class="section-anchor mt-6 mb-12">
+            <div class="section-bar sticky z-10 -mx-4 md:-mx-6 px-4 md:px-6">
+                <div class="flex items-center gap-3 py-2.5 px-4 md:px-6 bg-slate-100/85 backdrop-blur-xl border-b-2 border-slate-300 rounded-t-xl shadow-sm">
+                    <span class="text-xl" aria-hidden="true">&#128267;</span>
+                    <h2 class="text-lg font-bold text-slate-800">Energy Storage</h2>
+                    <span class="hidden md:inline ml-auto text-sm text-slate-500 font-medium">Battery bank monitoring</span>
                 </div>
             </div>
 
