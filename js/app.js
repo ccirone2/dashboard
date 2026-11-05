@@ -13,6 +13,9 @@
 const EXPECTED_API_VERSION = 2;
 const TOKEN_KEY = 'powerDashboard.token';
 const API_OVERRIDE_KEY = 'powerDashboard.apiBase';
+// Range presets [hours, label]; DEFAULT_HOURS must be one of them (and is left out of the URL).
+const RANGE_PRESETS = [[168, '7d'], [720, '30d'], [4392, '6M']];   // 6M = 183 days
+const DEFAULT_HOURS = 168;
 
 function safeStorage(kind) {
     try { return window[kind]; } catch (e) { return null; }
@@ -209,6 +212,7 @@ function dashboard() {
     return {
         mobileMenuOpen: false,
         activeSection: 'production',
+        showHelp: false,
 
         // App lifecycle: 'starting' -> ('login' <-> 'ready') | 'error'
         phase: 'starting',
@@ -223,8 +227,8 @@ function dashboard() {
         loggingIn: false,
 
         // Time range for the time-series charts (power, strings, cells, summary)
-        presets: [[24, '24h'], [72, '72h'], [168, '7d'], [720, '30d'], [2160, '90d'], [8760, '1y']],
-        hours: 72,              // active preset, or null when a custom range is used
+        presets: RANGE_PRESETS,
+        hours: DEFAULT_HOURS,   // active preset, or null when a custom range is used
         customStart: '',
         customEnd: '',
         showCustom: false,
@@ -275,6 +279,7 @@ function dashboard() {
             this.readUrl();
             this.setupSectionObserver();
             this.setupResizeHandling();
+            this.setupStickyOffsets();
             this.setupTimeseriesSync();
             this.start();
 
@@ -379,7 +384,7 @@ function dashboard() {
         writeUrl() {
             const params = new URLSearchParams();
             if (this.hours) {
-                if (this.hours !== 72) params.set('hours', this.hours);
+                if (this.hours !== DEFAULT_HOURS) params.set('hours', this.hours);
             } else {
                 params.set('start', this.customStart);
                 if (this.customEnd) params.set('end', this.customEnd);
@@ -687,6 +692,33 @@ function dashboard() {
                 });
             }, { rootMargin: '-20% 0px -70% 0px' });
             sections.forEach(s => observer.observe(s));
+        },
+
+        // The time bar wraps and grows (custom range form, help, warnings), so publish its real
+        // height, and the section bar's, for the sticky offsets and snap margins in the CSS.
+        setupStickyOffsets() {
+            const root = document.documentElement.style;
+            const timeBar = document.getElementById('time-bar');
+            const sectionBar = document.querySelector('.section-bar');
+            const update = () => {
+                if (timeBar && timeBar.offsetHeight) root.setProperty('--timebar-h', timeBar.offsetHeight + 'px');
+                if (sectionBar && sectionBar.offsetHeight) {
+                    const sticky = getComputedStyle(sectionBar).position === 'sticky';
+                    root.setProperty('--sectionbar-h', (sticky ? sectionBar.offsetHeight : 0) + 'px');
+                }
+            };
+            const scroller = timeBar && timeBar.querySelector('.range-scroller');
+            const markOverflow = () => {
+                if (!scroller) return;
+                const hidden = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft;
+                scroller.classList.toggle('more-right', hidden > 2);
+            };
+            if (scroller) scroller.addEventListener('scroll', markOverflow, { passive: true });
+            const observer = new ResizeObserver(() => { update(); markOverflow(); });
+            [timeBar, sectionBar, scroller].forEach(el => el && observer.observe(el));
+            // Rotating can make the section bar sticky or static without resizing it.
+            window.addEventListener('resize', update, { passive: true });
+            update();
         },
 
         setupResizeHandling() {

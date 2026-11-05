@@ -14,7 +14,7 @@ Browsers may cache files for up to 10 minutes; hard-refresh to see a change imme
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | Markup: sign-in screen, header with range controls, chart containers (Tailwind + Alpine.js) |
+| `index.html` | Markup: sign-in screen, sticky time bar with the range controls, chart containers (Tailwind + Alpine.js) |
 | `css/dashboard.css` | Chart sizing (flex height chain), scroll snapping, navigation rail, loaders |
 | `js/config.js` | **The API address** (`apiBase`). Change it if the Cloud Run URL changes |
 | `js/app.js` | App logic: startup, sign-in, API client, chart rendering, range/period state |
@@ -29,9 +29,11 @@ Browsers may cache files for up to 10 minutes; hard-refresh to see a change imme
 3. If auth is required and there is no saved token, the sign-in form posts to `/api/login`. The
    returned token (valid 30 days) is kept in `localStorage` and sent as `Authorization: Bearer …`.
    Any `401` signs the browser out. Changing the dashboard password signs everyone out.
-4. The header's time range (presets or custom start/end, Central time) drives the power, string,
-   cell-voltage and summary charts (`/api/power`, `/api/strings`, `/api/cells`). The "Period"
-   select drives the production totals (`/api/production`). The view is kept in the URL
+4. The time bar's range (a 7d, 30d or 6M preset, 7d by default, or a custom start/end in Central time) drives the power, string,
+   cell-voltage and summary charts (`/api/power`, `/api/strings`, `/api/cells`). The time bar
+   stays pinned at the top while you scroll; its "?" button shows the zoom/pan help, and Sign out
+   is in the navigation rail (the ☰ menu on phones). The "Period" select, in the Daily Energy
+   card's header, drives the production totals (`/api/production`). The view is kept in the URL
    (`?hours=`, `?start=&end=`, `?year=`).
 
 ## Zooming and panning
@@ -39,7 +41,7 @@ Browsers may cache files for up to 10 minutes; hard-refresh to see a change imme
 On the Bokeh time charts (cell voltages, string charts), dragging **pans** through time; zoom with
 the toolbar's x box-zoom tool. On the average-power chart, dragging box-zooms. All time charts
 follow the same window, ◀ ▶ step it, and the toolbar's reset (power chart: double-click or
-autoscale) returns to the header's range. There's no wheel zoom, so the wheel scrolls the page.
+autoscale) returns to the time bar's range. There's no wheel zoom, so the wheel scrolls the page.
 Hover readouts and crosshairs are in each Bokeh toolbar, off by default. After you stop, the page
 re-fetches the visible window from the API, so detail increases as the window narrows (for
 example 30-minute averages for a month, raw 5-minute samples within 72 hours). The zoomed window
