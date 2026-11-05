@@ -13,6 +13,9 @@
 const EXPECTED_API_VERSION = 2;
 const TOKEN_KEY = 'powerDashboard.token';
 const API_OVERRIDE_KEY = 'powerDashboard.apiBase';
+// Range presets [hours, label]; DEFAULT_HOURS must be one of them (and is left out of the URL).
+const RANGE_PRESETS = [[168, '7d'], [720, '30d'], [4392, '6M']];   // 6M = 183 days
+const DEFAULT_HOURS = 168;
 
 function safeStorage(kind) {
     try { return window[kind]; } catch (e) { return null; }
@@ -224,8 +227,8 @@ function dashboard() {
         loggingIn: false,
 
         // Time range for the time-series charts (power, strings, cells, summary)
-        presets: [[24, '24h'], [72, '72h'], [168, '7d'], [720, '30d'], [2160, '90d'], [8760, '1y']],
-        hours: 72,              // active preset, or null when a custom range is used
+        presets: RANGE_PRESETS,
+        hours: DEFAULT_HOURS,   // active preset, or null when a custom range is used
         customStart: '',
         customEnd: '',
         showCustom: false,
@@ -381,7 +384,7 @@ function dashboard() {
         writeUrl() {
             const params = new URLSearchParams();
             if (this.hours) {
-                if (this.hours !== 72) params.set('hours', this.hours);
+                if (this.hours !== DEFAULT_HOURS) params.set('hours', this.hours);
             } else {
                 params.set('start', this.customStart);
                 if (this.customEnd) params.set('end', this.customEnd);

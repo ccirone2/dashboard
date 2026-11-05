@@ -29,7 +29,7 @@ Browsers may cache files for up to 10 minutes; hard-refresh to see a change imme
 3. If auth is required and there is no saved token, the sign-in form posts to `/api/login`. The
    returned token (valid 30 days) is kept in `localStorage` and sent as `Authorization: Bearer …`.
    Any `401` signs the browser out. Changing the dashboard password signs everyone out.
-4. The time bar's range (presets or custom start/end, Central time) drives the power, string,
+4. The time bar's range (a 7d, 30d or 6M preset, 7d by default, or a custom start/end in Central time) drives the power, string,
    cell-voltage and summary charts (`/api/power`, `/api/strings`, `/api/cells`). The time bar
    stays pinned at the top while you scroll; its "?" button shows the zoom/pan help, and Sign out
    is in the navigation rail (the ☰ menu on phones). The "Period" select, in the Daily Energy

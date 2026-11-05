@@ -175,7 +175,7 @@
             <div class="mt-1.5 flex items-center gap-2 min-h-[1.75rem] text-xs text-slate-500" role="status">
                 <template x-if="!view">
                     <span class="min-w-0 truncate">
-                        <span class="font-medium text-slate-600" x-text="rangeLabel">Last 72h</span>
+                        <span class="font-medium text-slate-600" x-text="rangeLabel">Last 7d</span>
                         <template x-if="shown && hours">
                             <span class="hidden sm:inline">(<span x-text="formatLocal(shown.start)"></span> – <span x-text="formatLocal(shown.end)"></span>)</span>
                         </template>
