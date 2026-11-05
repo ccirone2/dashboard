@@ -143,9 +143,10 @@
              controls are always one tap away. js/app.js measures its height (--timebar-h). -->
         <div id="time-bar" class="time-bar sticky z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm"
              @click.outside="showHelp = false">
-            <div class="flex items-center gap-2">
-                <h1 class="sr-only lg:not-sr-only lg:mr-2 text-base font-bold text-slate-700 whitespace-nowrap">Renewable Power Dashboard</h1>
-                <div class="range-scroller flex-1 min-w-0 overflow-x-auto">
+            <div x-ref="timeRow" class="flex flex-wrap items-center gap-2">
+                <h1 x-ref="timeTitle" class="sr-only lg:not-sr-only lg:mr-2 text-base font-bold text-slate-700 whitespace-nowrap">Renewable Power Dashboard</h1>
+                <div x-ref="rangeScroller" class="range-scroller min-w-0 overflow-x-auto"
+                     :class="showCustom && customInline ? 'flex-initial' : 'flex-1'">
                     <div class="inline-flex whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm font-medium" role="group" aria-label="Time range">
                         <template x-for="[presetHours, presetLabel] in presets" :key="presetHours">
                             <button type="button" @click="selectPreset(presetHours)"
@@ -159,13 +160,33 @@
                             :aria-pressed="!hours && !view" :aria-expanded="showCustom">Custom…</button>
                     </div>
                 </div>
-                <div class="shrink-0 inline-flex rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600" role="group" aria-label="Move the time window">
+
+                <!-- Custom range: opens just right of "Custom…" when the row has room for it
+                     (customInline, set by fitCustomForm()), otherwise on its own line below. -->
+                <form x-ref="customForm" x-show="showCustom" x-cloak @submit.prevent="applyCustom()"
+                    class="flex items-center gap-2 text-sm"
+                    :class="customInline ? 'flex-nowrap' : 'order-last basis-full flex-wrap pt-1'">
+                    <label class="flex items-center gap-1.5 text-slate-600 whitespace-nowrap" title="Central time">
+                        <span class="w-8 text-xs font-medium">Start</span>
+                        <input type="datetime-local" x-model="customStart" :min="earliest.cells || ''" required
+                            class="rounded-md border border-slate-300 px-2 py-1">
+                    </label>
+                    <label class="flex items-center gap-1.5 text-slate-600 whitespace-nowrap" title="Central time; leave blank for now">
+                        <span class="w-8 text-xs font-medium">End</span>
+                        <input type="datetime-local" x-model="customEnd" :min="customStart"
+                            class="rounded-md border border-slate-300 px-2 py-1">
+                    </label>
+                    <button type="submit" class="shrink-0 px-3 py-1.5 rounded-md bg-slate-800 text-white font-medium hover:bg-slate-700">Apply</button>
+                    <span class="basis-full text-xs text-slate-400" :class="customInline ? 'hidden' : ''">Central time. Leave End blank for “now”.</span>
+                </form>
+
+                <div x-ref="stepButtons" class="ml-auto shrink-0 inline-flex rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600" role="group" aria-label="Move the time window">
                     <button type="button" @click="shiftView(-1)" class="px-2.5 sm:px-3 py-1.5 rounded-l-lg hover:bg-slate-100"
                         title="Earlier: move the window back by half its width" aria-label="Earlier">&#9664;</button>
                     <button type="button" @click="shiftView(1)" class="px-2.5 sm:px-3 py-1.5 rounded-r-lg border-l border-slate-200 hover:bg-slate-100"
                         title="Later: move the window forward by half its width" aria-label="Later">&#9654;</button>
                 </div>
-                <button type="button" @click="refresh()" :disabled="anyLoading"
+                <button x-ref="refreshButton" type="button" @click="refresh()" :disabled="anyLoading"
                     class="shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
                     title="Reload all charts" aria-label="Refresh">
                     <span :class="anyLoading ? 'animate-spin' : ''" class="inline-block" aria-hidden="true">&#8635;</span><span class="hidden sm:inline">Refresh</span>
@@ -212,20 +233,6 @@
                 Using API <span x-text="apiBase"></span> (<a class="underline" href="?api=default">reset</a>)
             </p>
 
-            <form x-show="showCustom" x-cloak @submit.prevent="applyCustom()"
-                class="mt-2 pb-1 flex flex-wrap items-end gap-3 text-sm">
-                <label class="flex flex-col text-slate-600">
-                    <span class="text-xs font-medium mb-1">Start (Central time)</span>
-                    <input type="datetime-local" x-model="customStart" :min="earliest.cells || ''" required
-                        class="rounded-md border border-slate-300 px-2 py-1">
-                </label>
-                <label class="flex flex-col text-slate-600">
-                    <span class="text-xs font-medium mb-1">End (blank = now)</span>
-                    <input type="datetime-local" x-model="customEnd" :min="customStart"
-                        class="rounded-md border border-slate-300 px-2 py-1">
-                </label>
-                <button type="submit" class="px-4 py-1.5 rounded-md bg-slate-800 text-white font-medium hover:bg-slate-700">Apply</button>
-            </form>
             <p x-show="rangeError" x-cloak x-text="rangeError" class="mt-1 text-xs text-red-600" role="alert"></p>
         </div>
 

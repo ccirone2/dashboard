@@ -51,6 +51,11 @@ on Cloud Run. Its CLAUDE.md and DEPLOYMENT.md cover the server side. The API add
   (`.chart-container.chart-snap`: at most 75vh, shrunk to fit under the stack) use these
   variables. A card taller than the room under the stack lets the page rest with its top
   hidden.
+- **Custom range form** sits in the time bar's first row, right of "Custom…", when
+  `fitCustomForm()` finds room for everything at natural width (`customInline`); otherwise it
+  wraps onto its own line (`order-last basis-full`). It re-checks on open and on every time-bar
+  resize, including the nav rail's hover expansion. Toggle things in that row with `:class`, not
+  `x-show`: Alpine hides `x-show` elements a frame late, which makes the row wrap for a moment.
 - **Chart sizing** comes from CSS: the `.chart-wrapper` flex chain plus absolutely positioned
   children. Bokeh figures use `stretch_both`, and Plotly uses `responsive: true` plus a
   ResizeObserver.

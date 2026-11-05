@@ -213,6 +213,7 @@ function dashboard() {
         mobileMenuOpen: false,
         activeSection: 'production',
         showHelp: false,
+        customInline: false,    // custom range form beside the presets (room for it) or below
 
         // App lifecycle: 'starting' -> ('login' <-> 'ready') | 'error'
         phase: 'starting',
@@ -427,6 +428,26 @@ function dashboard() {
                 this.customStart = this.shown.start;
                 this.customEnd = this.shown.end;
             }
+            if (this.showCustom) this.$nextTick(() => this.fitCustomForm());
+        },
+        // Put the custom range form beside "Custom…" if the time bar's first row has room for
+        // everything at its natural width; otherwise it wraps onto its own line. Depends only on
+        // widths, so re-running it after the resulting height change gives the same answer.
+        fitCustomForm() {
+            const r = this.$refs;
+            if (!this.showCustom || !r.timeRow || !r.customForm || !r.timeRow.clientWidth) return;
+            const gap = parseFloat(getComputedStyle(r.timeRow).columnGap) || 0;
+            const formParts = [...r.customForm.querySelectorAll(':scope > label, :scope > button')];
+            const formGap = parseFloat(getComputedStyle(r.customForm).columnGap) || 0;
+            const formWidth = formParts.reduce((sum, el) => sum + el.offsetWidth, 0) + formGap * (formParts.length - 1);
+            const items = [r.rangeScroller.firstElementChild.offsetWidth, formWidth,
+                           r.stepButtons.offsetWidth, r.refreshButton.offsetWidth];
+            const title = getComputedStyle(r.timeTitle);
+            if (title.position !== 'absolute') {   // sr-only below lg takes no room
+                items.push(r.timeTitle.offsetWidth + (parseFloat(title.marginRight) || 0));
+            }
+            const needed = items.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
+            this.customInline = needed <= r.timeRow.clientWidth;
         },
         applyCustom() {
             if (!this.customStart) {
@@ -701,6 +722,7 @@ function dashboard() {
             const timeBar = document.getElementById('time-bar');
             const sectionBar = document.querySelector('.section-bar');
             const update = () => {
+                this.fitCustomForm();
                 if (timeBar && timeBar.offsetHeight) root.setProperty('--timebar-h', timeBar.offsetHeight + 'px');
                 if (sectionBar && sectionBar.offsetHeight) {
                     const sticky = getComputedStyle(sectionBar).position === 'sticky';
