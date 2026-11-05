@@ -52,8 +52,10 @@ on Cloud Run. Its CLAUDE.md and DEPLOYMENT.md cover the server side. The API add
   variables. A card taller than the room under the stack lets the page rest with its top
   hidden.
 - **Custom range form** sits in the time bar's first row, right of "Custom…", when
-  `fitCustomForm()` finds room for everything at natural width (`customInline`); otherwise it
-  wraps onto its own line (`order-last basis-full`). It re-checks on open and on every time-bar
+  `fitCustomForm()` finds room for everything at natural width (`customInline`). If it only fits
+  without the bar's title, the title is hidden while the form is open (`customHidesTitle`; the
+  title's width is remembered in `titleWidth`). Otherwise the form wraps onto its own line
+  (`order-last basis-full`). It re-checks on open and on every time-bar
   resize, including the nav rail's hover expansion. Toggle things in that row with `:class`, not
   `x-show`: Alpine hides `x-show` elements a frame late, which makes the row wrap for a moment.
 - **Chart sizing** comes from CSS: the `.chart-wrapper` flex chain plus absolutely positioned

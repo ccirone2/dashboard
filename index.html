@@ -144,7 +144,8 @@
         <div id="time-bar" class="time-bar sticky z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm"
              @click.outside="showHelp = false">
             <div x-ref="timeRow" class="flex flex-wrap items-center gap-2">
-                <h1 x-ref="timeTitle" class="sr-only lg:not-sr-only lg:mr-2 text-base font-bold text-slate-700 whitespace-nowrap">Renewable Power Dashboard</h1>
+                <h1 x-ref="timeTitle" class="sr-only text-base font-bold text-slate-700 whitespace-nowrap"
+                    :class="showCustom && customHidesTitle ? '' : 'lg:not-sr-only lg:mr-2'">Renewable Power Dashboard</h1>
                 <div x-ref="rangeScroller" class="range-scroller min-w-0 overflow-x-auto"
                      :class="showCustom && customInline ? 'flex-initial' : 'flex-1'">
                     <div class="inline-flex whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm font-medium" role="group" aria-label="Time range">

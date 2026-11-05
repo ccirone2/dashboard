@@ -214,6 +214,8 @@ function dashboard() {
         activeSection: 'production',
         showHelp: false,
         customInline: false,    // custom range form beside the presets (room for it) or below
+        customHidesTitle: false, // the time bar's title gives up its room to the inline form
+        titleWidth: 0,          // the title's width incl. margin, measured while it's shown
 
         // App lifecycle: 'starting' -> ('login' <-> 'ready') | 'error'
         phase: 'starting',
@@ -442,12 +444,18 @@ function dashboard() {
             const formWidth = formParts.reduce((sum, el) => sum + el.offsetWidth, 0) + formGap * (formParts.length - 1);
             const items = [r.rangeScroller.firstElementChild.offsetWidth, formWidth,
                            r.stepButtons.offsetWidth, r.refreshButton.offsetWidth];
+            const withoutTitle = items.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
+            // The title is shown from lg up (sr-only below). Remember its width while it's
+            // visible; it's fixed text, so the value still holds while it's hidden.
             const title = getComputedStyle(r.timeTitle);
-            if (title.position !== 'absolute') {   // sr-only below lg takes no room
-                items.push(r.timeTitle.offsetWidth + (parseFloat(title.marginRight) || 0));
+            if (title.position !== 'absolute') {
+                this.titleWidth = r.timeTitle.offsetWidth + (parseFloat(title.marginRight) || 0);
             }
-            const needed = items.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
-            this.customInline = needed <= r.timeRow.clientWidth;
+            const titleRoom = window.matchMedia('(min-width: 1024px)').matches ? this.titleWidth + gap : 0;
+            const room = r.timeRow.clientWidth;
+            // Prefer: inline with the title, then inline without it, then the form on its own line.
+            this.customInline = withoutTitle <= room;
+            this.customHidesTitle = this.customInline && titleRoom > 0 && withoutTitle + titleRoom > room;
         },
         applyCustom() {
             if (!this.customStart) {
