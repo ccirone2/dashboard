@@ -16,11 +16,14 @@ on Cloud Run. Its CLAUDE.md and DEPLOYMENT.md cover the server side. The API add
 
 - `EXPECTED_API_VERSION` (`js/app.js`) must equal `API_VERSION` in the backend's `server.py`.
 - Endpoints: `GET /health` (no auth: `api_version`, `bokeh_version`, `auth_required`),
-  `POST /api/login` → `{token, expires}`, and `GET /api/meta|cells|strings|power|production`
+  `POST /api/login` → `{token, expires}`, and `GET /api/meta|cells|balance|strings|power|production`
   with `Authorization: Bearer <token>`.
 - Chart payloads are `{range, resolution, charts: {key: spec}}`, and each spec is
   `{type: "bokeh", item}`, `{type: "plotly", figure, config}` or `{type: "message", text}`.
-  Keys map to element ids in `loadRange()` / `loadProduction()`.
+  Keys map to element ids in `loadRange()` / `loadProduction()`. `/api/balance` returns
+  `cell_balance` → `#cell-balance-chart` and `cell_resistance_balance` → `#cell-resistance-chart`
+  (per-cell bars with cells on the x axis, so not part of the zoom sync, but re-fetched for the
+  visible window like everything in `loadRange`).
 - The API only accepts browser requests from origins in its `ALLOWED_ORIGINS`
   (`https://ccirone2.github.io`). A new hosting origin needs a backend env change.
 - **Synchronised zoom/pan**: the backend names its Bokeh figures `cell_voltage_plot`,
