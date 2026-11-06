@@ -30,7 +30,8 @@ Browsers may cache files for up to 10 minutes; hard-refresh to see a change imme
    returned token (valid 30 days) is kept in `localStorage` and sent as `Authorization: Bearer …`.
    Any `401` signs the browser out. Changing the dashboard password signs everyone out.
 4. The time bar's range (a 7d, 30d or 6M preset, 7d by default, or a custom start/end in Central time) drives the power, string,
-   cell-voltage and summary charts (`/api/power`, `/api/strings`, `/api/cells`). The time bar
+   cell-voltage, cell-balance and summary charts (`/api/power`, `/api/strings`, `/api/cells`,
+   `/api/balance`). The time bar
    stays pinned at the top while you scroll; its "?" button shows the zoom/pan help, and Sign out
    is in the navigation rail (the ☰ menu on phones). The "Period" select, in the Daily Energy
    card's header, drives the production totals (`/api/production`). The view is kept in the URL
@@ -48,6 +49,10 @@ example 30-minute averages for a month, raw 5-minute samples within 72 hours). T
 is kept in the URL (`from`/`to`) and shown as a "Zoomed" chip with "Reset zoom". Y axes never
 zoom. The daily/monthly/annual production charts aren't part of this; they follow the Period
 selector.
+
+The **cell balance** cards (voltage, and resistance, against the bank average) have cells, not
+time, on the x axis. They integrate over the same window, so zooming or panning a time chart
+re-computes them for the visible window. Hover a cell's column for its numbers.
 
 ## API contract
 

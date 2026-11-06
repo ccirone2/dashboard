@@ -254,7 +254,7 @@ function dashboard() {
         periodShown: null,
 
         earliest: {},
-        loading: { power: false, strings: false, cells: false, production: false },
+        loading: { power: false, strings: false, cells: false, balance: false, production: false },
         requestSeq: { range: 0, production: 0 },
         updatedAt: '',
         autoRefreshMinutes: 5,
@@ -557,6 +557,10 @@ function dashboard() {
                 this.loadGroup('strings', '/api/strings?' + query, { string_plot: 'string-chart' }, 'range', seq, isCurrent),
                 this.loadGroup('cells', '/api/cells?' + query,
                     { cell_voltage: 'cell-voltage-chart', cell_summary: 'cell-summary-table' }, 'range', seq, isCurrent),
+                // Each cell vs the bank average, integrated over the same (visible) window.
+                this.loadGroup('balance', '/api/balance?' + query,
+                    { cell_balance: 'cell-balance-chart', cell_resistance_balance: 'cell-resistance-chart' },
+                    'range', seq, isCurrent),
             ]);
             if (seq !== this.requestSeq.range || !isCurrent()) return;
             const first = results.find(Boolean);
