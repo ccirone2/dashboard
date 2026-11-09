@@ -50,9 +50,10 @@ is kept in the URL (`from`/`to`) and shown as a "Zoomed" chip with "Reset zoom".
 zoom. The daily/monthly/annual production charts aren't part of this; they follow the Period
 selector.
 
-The **cell balance** cards (voltage, and resistance, against the bank average) have cells, not
-time, on the x axis. They integrate over the same window, so zooming or panning a time chart
-re-computes them for the visible window. Hover a cell's column for its numbers.
+The **cell balance** cards (voltage against the bank median, resistance against the median
+cell) have cells, not time, on the x axis. They integrate over the same window, so zooming or
+panning a time chart re-computes them for the visible window. Hover a cell's column for its
+numbers.
 
 ## API contract
 

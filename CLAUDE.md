@@ -22,7 +22,7 @@ on Cloud Run. Its CLAUDE.md and DEPLOYMENT.md cover the server side. The API add
   `{type: "bokeh", item}`, `{type: "plotly", figure, config}` or `{type: "message", text}`.
   Keys map to element ids in `loadRange()` / `loadProduction()`. `/api/balance` returns
   `cell_balance` → `#cell-balance-chart` and `cell_resistance_balance` → `#cell-resistance-chart`
-  (per-cell bars with cells on the x axis, so not part of the zoom sync, but re-fetched for the
+  (per-cell bars against the bank median, with cells on the x axis, so not part of the zoom sync, but re-fetched for the
   visible window like everything in `loadRange`).
 - The API only accepts browser requests from origins in its `ALLOWED_ORIGINS`
   (`https://ccirone2.github.io`). A new hosting origin needs a backend env change.
